@@ -8,40 +8,34 @@ datasource db {
 }
 
 model Share {
-  id            String   @id @default(cuid())
-  code          String   @unique
-
+  id            String  @id @default(cuid())
+  code          String  @unique
   textContent   String?
   passwordHash  String?
+  oneTimeUse    Boolean @default(false)
+  encrypted     Boolean @default(false)
+  downloadCount Int     @default(0)
 
-  oneTimeUse    Boolean  @default(false)
-  encrypted     Boolean  @default(false)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 
-  downloadCount Int      @default(0)
+  files File[]
 
-  expiresAt     DateTime
-  createdAt     DateTime @default(now())
-
-  files         File[]
+  @@index([expiresAt])
 }
 
 model File {
-  id           String   @id @default(cuid())
+  id String @id @default(cuid())
 
-  shareId      String
+  shareId String
+  share   Share  @relation(fields: [shareId], references: [id], onDelete: Cascade)
 
-  url          String
-  publicId     String
+  url      String
+  publicId String
 
   mimeType     String
   sizeBytes    Int
   originalName String
 
-  createdAt    DateTime @default(now())
-
-  share Share @relation(
-    fields: [shareId],
-    references: [id],
-    onDelete: Cascade
-  )
+  createdAt DateTime @default(now())
 }
