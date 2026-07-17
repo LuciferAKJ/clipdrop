@@ -11,6 +11,9 @@ export async function GET(
     where: {
       code: code.toUpperCase(),
     },
+    include: {
+      files: true,
+    },
   });
 
   if (!share) {
@@ -30,5 +33,12 @@ export async function GET(
   return NextResponse.json({
     textContent: share.textContent,
     createdAt: share.createdAt,
+    expiresAt: share.expiresAt,
+    files: share.files.map((file) => ({
+      url: file.url,
+      name: file.originalName,
+      type: file.mimeType,
+      size: file.sizeBytes,
+    })),
   });
 }
