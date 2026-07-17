@@ -49,13 +49,29 @@ export default function ReceivePage() {
   if (error) return <main className="max-w-xl mx-auto p-8 text-destructive">{error}</main>;
 
   if (needsPassword) {
-    return (
-      <main className="max-w-sm mx-auto p-8 space-y-3">
-        <Input type="password" placeholder="Enter password" value={password} onChange={(e) => setPassword(e.target.value)} />
-        <Button onClick={fetchContent} className="w-full">Unlock</Button>
-      </main>
-    );
-  }
+  return (
+    <main className="max-w-sm mx-auto p-8 space-y-4">
+      <h2 className="text-xl font-semibold">
+        Password Required
+      </h2>
+
+      <p className="text-sm text-muted-foreground">
+        This share is protected with a password.
+      </p>
+
+      <Input
+        type="password"
+        placeholder="Enter password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+      />
+
+      <Button onClick={fetchContent} className="w-full">
+        Unlock
+      </Button>
+    </main>
+  );
+}
 
   return (
     <main className="max-w-xl mx-auto p-8 space-y-4">
