@@ -5,21 +5,18 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 model Share {
-  id            String  @id @default(cuid())
-  code          String  @unique
+  id            String   @id @default(cuid())
+  code          String   @unique
   textContent   String?
   passwordHash  String?
-  oneTimeUse    Boolean @default(false)
-  encrypted     Boolean @default(false)
-  downloadCount Int     @default(0)
+  oneTimeUse    Boolean  @default(false)
+  encrypted     Boolean  @default(false)
+  downloadCount Int      @default(0)
+  expiresAt     DateTime
+  createdAt     DateTime @default(now())
 
-  expiresAt DateTime
-  createdAt DateTime @default(now())
-
-  // Milestone 9 additions
   userId String?
   ipHash String?
 
