@@ -1,10 +1,27 @@
 import { UploadZone } from "@/components/UploadZone";
 import { ReceiveCode } from "@/components/ReceiveCode";
+import {
+  Show,
+  SignInButton,
+  UserButton,
+} from "@clerk/nextjs";
 
 export default function Home() {
   return (
     <main className="mx-auto max-w-xl px-4 py-16">
+      <div className="flex justify-end mb-6">
+  <Show when="signed-out">
+  <SignInButton mode="modal">
+    <button className="rounded border px-3 py-1 text-sm hover:bg-muted">
+      Sign In
+    </button>
+  </SignInButton>
+</Show>
 
+<Show when="signed-in">
+  <UserButton />
+</Show>
+</div>
       <h1 className="text-4xl font-bold mb-3">
         ClipDrop
       </h1>

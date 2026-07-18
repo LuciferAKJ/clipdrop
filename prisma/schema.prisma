@@ -5,8 +5,8 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
-
 model Share {
   id            String  @id @default(cuid())
   code          String  @unique
@@ -19,9 +19,16 @@ model Share {
   expiresAt DateTime
   createdAt DateTime @default(now())
 
+  // Milestone 9 additions
+  userId String?
+  ipHash String?
+
+  user User? @relation(fields: [userId], references: [id])
+
   files File[]
 
   @@index([expiresAt])
+  @@index([ipHash])
 }
 
 model File {
@@ -38,4 +45,12 @@ model File {
   originalName String
 
   createdAt DateTime @default(now())
+}
+
+model User {
+  id        String   @id
+  email     String   @unique
+  createdAt DateTime @default(now())
+
+  shares Share[]
 }
