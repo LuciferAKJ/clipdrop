@@ -5,6 +5,7 @@ import {
   SignInButton,
   UserButton,
 } from "@clerk/nextjs";
+import Link from "next/link";
 
 export default function Home() {
   return (
@@ -19,7 +20,16 @@ export default function Home() {
 </Show>
 
 <Show when="signed-in">
-  <UserButton />
+  <div className="flex items-center gap-3">
+    <Link
+      href="/dashboard"
+      className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+    >
+      Dashboard
+    </Link>
+
+    <UserButton />
+  </div>
 </Show>
 </div>
       <h1 className="text-4xl font-bold mb-3">
