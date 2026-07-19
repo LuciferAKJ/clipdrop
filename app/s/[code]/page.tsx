@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
+import { TextViewer } from "@/components/share/TextViewer";
 
 export default function ReceivePage() {
   const { code } = useParams<{ code: string }>();
@@ -76,8 +77,8 @@ export default function ReceivePage() {
   return (
     <main className="max-w-xl mx-auto p-8 space-y-4">
       {data?.textContent && (
-        <div className="rounded-lg border p-4 whitespace-pre-wrap">{data.textContent}</div>
-      )}
+  <TextViewer text={data.textContent} />
+)}
       {data?.files?.map((f: any) => (
         <a key={f.id} href={f.url} target="_blank" className="block rounded-lg border p-4 hover:bg-muted">
           {f.originalName} ({(f.sizeBytes / 1024).toFixed(1)} KB)
