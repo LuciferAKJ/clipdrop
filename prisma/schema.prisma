@@ -6,6 +6,12 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+enum ClipboardContentType {
+  TEXT
+  SHARE
+}
+
 model Share {
   id            String   @id @default(cuid())
   code          String   @unique
@@ -48,6 +54,29 @@ model User {
   id        String   @id
   email     String   @unique
   createdAt DateTime @default(now())
-
+  devices       Device[]
+  clipboardSync ClipboardSync?
   shares Share[]
+}
+
+model Device {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  clientId     String
+  name         String
+  registeredAt DateTime @default(now())
+  lastSeenAt   DateTime @default(now())
+
+  @@unique([userId, clientId])
+  @@index([userId])
+}
+
+model ClipboardSync {
+  userId      String               @id
+  user        User                 @relation(fields: [userId], references: [id])
+  contentType ClipboardContentType @default(TEXT)
+  textContent String?
+  shareId     String?
+  updatedAt   DateTime             @updatedAt
 }
