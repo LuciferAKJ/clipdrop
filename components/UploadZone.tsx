@@ -6,19 +6,33 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { ShareResult } from "./ShareResult";
+import { UploadProgress } from "./UploadProgress";
+import { startUpload, UploadCancelledError, type UploadHandle } from "@/lib/uploadService";
+
+type BatchStatus = "idle" | "uploading" | "error" | "cancelled";
 
 export function UploadZone() {
   const [text, setText] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [password, setPassword] = useState("");
   const [oneTimeUse, setOneTimeUse] = useState(false);
-  const [loading, setLoading] = useState(false);
+
+  const [status, setStatus] = useState<BatchStatus>("idle");
+  const [progress, setProgress] = useState(0);
+  const [handle, setHandle] = useState<UploadHandle | null>(null);
   const [result, setResult] = useState<string | null>(null);
 
-  const onDrop = useCallback((accepted: File[]) => setFiles((f) => [...f, ...accepted]), []);
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop });
+  const onDrop = useCallback(
+    (accepted: File[]) => setFiles((f) => [...f, ...accepted]),
+    []
+  );
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    disabled: status === "uploading",
+  });
 
-  async function handlePaste(e: React.ClipboardEvent) {
+  function handlePaste(e: React.ClipboardEvent) {
+    if (status === "uploading") return;
     const items = e.clipboardData.items;
     for (const item of items) {
       if (item.type.startsWith("image/")) {
@@ -28,40 +42,71 @@ export function UploadZone() {
     }
   }
 
+  function removeFile(idx: number) {
+    if (status === "uploading") return;
+    setFiles((f) => f.filter((_, i) => i !== idx));
+  }
+
+  function cancelUpload() {
+    handle?.cancel();
+  }
+
   async function handleUpload() {
     if (!text && files.length === 0) {
       toast.error("Add text or a file first");
       return;
     }
-    setLoading(true);
+
+    setStatus("uploading");
+    setProgress(0);
+
+    const uploadHandle = startUpload(
+      { text: text || undefined, files, password: password || undefined, oneTimeUse },
+      (percent) => setProgress(percent)
+    );
+    setHandle(uploadHandle);
+
     try {
-      const formData = new FormData();
-      if (text) formData.append("text", text);
-      files.forEach((f) => formData.append("files", f));
-      if (password) {
-      formData.append("password", password);
-      }
-      formData.append("oneTimeUse",oneTimeUse ? "true" : "false");
-
-      const res = await fetch("/api/upload", { method: "POST", body: formData });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-
+      const data = await uploadHandle.promise;
       setResult(data.code);
-      toast.success("Uploaded! Code: " + data.code);
+      setStatus("idle");
+      toast.success(`Uploaded! Code: ${data.code}`);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Upload failed");
+      if (err instanceof UploadCancelledError) {
+        setStatus("cancelled");
+        toast.info("Upload cancelled");
+      } else {
+        setStatus("error");
+        toast.error(err instanceof Error ? err.message : "Upload failed");
+      }
     } finally {
-      setLoading(false);
+      setHandle(null);
     }
   }
+
+  function reset() {
+    setResult(null);
+    setText("");
+    setFiles([]);
+    setPassword("");
+    setOneTimeUse(false);
+    setStatus("idle");
+    setProgress(0);
+  }
+
+  if (result) {
+    return <ShareResult code={result} onReset={reset} />;
+  }
+
+  const isUploading = status === "uploading";
 
   return (
     <div className="space-y-4" onPaste={handlePaste}>
       <div
         {...getRootProps()}
         className={`rounded-xl border-2 border-dashed p-10 text-center transition-colors
-          ${isDragActive ? "border-primary bg-primary/5" : "border-muted-foreground/30"}`}
+          ${isDragActive ? "border-primary bg-primary/5" : "border-muted-foreground/30"}
+          ${isUploading ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
       >
         <input {...getInputProps()} />
         <p className="text-muted-foreground">
@@ -70,40 +115,59 @@ export function UploadZone() {
       </div>
 
       {files.length > 0 && (
-        <ul className="text-sm text-muted-foreground">
-          {files.map((f, i) => <li key={i}>{f.name}</li>)}
+        <ul className="text-sm space-y-1">
+          {files.map((f, i) => (
+            <li key={i} className="flex justify-between items-center rounded-md bg-muted px-3 py-1.5">
+              <span className="truncate">{f.name}</span>
+              {!isUploading && (
+                <button
+                  onClick={() => removeFile(i)}
+                  className="text-muted-foreground hover:text-destructive ml-2"
+                >
+                  ✕
+                </button>
+              )}
+            </li>
+          ))}
         </ul>
       )}
+
+      {status === "uploading" && (
+        <UploadProgress percent={progress} status="uploading" onCancel={cancelUpload} />
+      )}
+      {status === "cancelled" && <UploadProgress percent={0} status="cancelled" />}
 
       <Textarea
         placeholder="Or paste/type text..."
         value={text}
         onChange={(e) => setText(e.target.value)}
         rows={5}
+        disabled={isUploading}
       />
 
-      <div className="space-y-3">
-      <Input
-      type="password"
-      placeholder="Password (optional)"
-      value={password}
-      onChange={(e) => setPassword(e.target.value)}
+      <div className="grid grid-cols-2 gap-3">
+        <Input
+          type="password"
+          placeholder="Password (optional)"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          disabled={isUploading}
         />
-      <label className="flex items-center gap-2 text-sm">
-      <input
-      type="checkbox"
-      checked={oneTimeUse}
-      onChange={(e) => setOneTimeUse(e.target.checked)}
-      />
-      Delete after first download
-      </label>
+        <label className="flex items-center gap-2 text-sm text-muted-foreground px-1">
+          <input
+            type="checkbox"
+            checked={oneTimeUse}
+            onChange={(e) => setOneTimeUse(e.target.checked)}
+            disabled={isUploading}
+            className="accent-primary"
+          />
+          Delete after first download
+        </label>
       </div>
 
-      <Button onClick={handleUpload} disabled={loading} className="w-full">
-        {loading ? "Uploading..." : "Create Share"}
+      <Button onClick={handleUpload} disabled={isUploading} className="w-full">
+        {isUploading ? `Uploading... ${progress}%` : "Create Share"}
       </Button>
-
-      {result && <ShareResult code={result} />}
     </div>
   );
 }
