@@ -1,16 +1,32 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { DeviceCard } from "./DeviceCard";
 import { getCurrentClientId } from "@/lib/deviceClient";
 import type { DeviceSummary } from "@/app/dashboard/devices/page";
 
-export function DeviceList({ initialDevices }: { initialDevices: DeviceSummary[] }) {
-  const [devices, setDevices] = useState(initialDevices);
-  const [currentClientId, setCurrentClientId] = useState<string | null>(null);
+function subscribeNoop() {
+  return () => {};
+}
 
-  useEffect(() => {
-    setCurrentClientId(getCurrentClientId());
-  }, []);
+function getClientIdSnapshot() {
+  return getCurrentClientId();
+}
+
+function getClientIdServerSnapshot() {
+  return null;
+}
+
+export function DeviceList({
+  initialDevices,
+}: {
+  initialDevices: DeviceSummary[];
+}) {
+  const [devices, setDevices] = useState(initialDevices);
+  const currentClientId = useSyncExternalStore(
+    subscribeNoop,
+    getClientIdSnapshot,
+    getClientIdServerSnapshot,
+  );
 
   function handleRenamed(id: string, name: string) {
     setDevices((prev) => prev.map((d) => (d.id === id ? { ...d, name } : d)));

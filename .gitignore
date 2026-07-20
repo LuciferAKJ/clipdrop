@@ -11,7 +11,25 @@
 !.yarn/versions
 
 # testing
-/coverage
+# Next.js
+.next/
+out/
+
+# Testing
+coverage/
+playwright-report/
+test-results/
+e2e/.auth/
+
+# Env
+.env.local
+.env*.local
+
+# Build tooling
+.turbo/
+
+# Dependencies
+node_modules/
 
 # next.js
 /.next/

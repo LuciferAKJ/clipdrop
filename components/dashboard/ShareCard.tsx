@@ -1,5 +1,4 @@
 "use client";
-
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -35,36 +34,24 @@ export function ShareCard({
 }) {
   const [deleting, setDeleting] = useState(false);
   const [open, setOpen] = useState(false);
-
-  const shareUrl =
-    typeof window !== "undefined"
-      ? `${window.location.origin}/s/${share.code}`
-      : "";
+  const shareHref = `/s/${share.code}`; // relative — pure, no window access needed at render
 
   function copyLink() {
-    navigator.clipboard.writeText(shareUrl);
+    if (typeof window === "undefined") return;
+    navigator.clipboard.writeText(`${window.location.origin}${shareHref}`);
     toast.success("Link copied");
   }
 
   async function handleDelete() {
     setDeleting(true);
-
     try {
       const res = await fetch("/api/dashboard/delete", {
         method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          shareId: share.id,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ shareId: share.id }),
       });
-
       const json = await res.json();
-
-      if (!res.ok) {
-        throw new Error(json.error || "Delete failed");
-      }
+      if (!res.ok) throw new Error(json.error || "Delete failed");
 
       toast.success("Share deleted");
       onDeleted(share.id);
@@ -79,10 +66,7 @@ export function ShareCard({
   return (
     <div className="rounded-xl border p-4 space-y-3">
       <div className="flex items-center justify-between">
-        <p className="font-mono font-semibold tracking-wide">
-          {share.code}
-        </p>
-
+        <p className="font-mono font-semibold tracking-wide">{share.code}</p>
         <Badge expired={share.isExpired} />
       </div>
 
@@ -90,7 +74,6 @@ export function ShareCard({
         <p>Created: {new Date(share.createdAt).toLocaleString()}</p>
         <p>Expires: {new Date(share.expiresAt).toLocaleString()}</p>
         <p>Downloads: {share.downloadCount}</p>
-
         <p>
           {share.fileCount} file{share.fileCount !== 1 ? "s" : ""}
           {share.hasText ? " · has text" : ""}
@@ -107,9 +90,8 @@ export function ShareCard({
         >
           Copy Link
         </Button>
-
         <a
-          href={shareUrl}
+          href={shareHref}
           target="_blank"
           rel="noopener noreferrer"
           className="flex-1 inline-flex items-center justify-center rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium hover:bg-accent hover:text-accent-foreground transition-colors"
@@ -117,11 +99,7 @@ export function ShareCard({
           Open
         </a>
 
-        <Button
-          size="sm"
-          variant="destructive"
-          onClick={() => setOpen(true)}
-        >
+        <Button size="sm" variant="destructive" onClick={() => setOpen(true)}>
           Delete
         </Button>
 
@@ -130,12 +108,10 @@ export function ShareCard({
             <DialogHeader>
               <DialogTitle>Delete this share?</DialogTitle>
             </DialogHeader>
-
             <p className="text-sm text-muted-foreground">
               This permanently deletes code <strong>{share.code}</strong> and
               any attached files. This cannot be undone.
             </p>
-
             <DialogFooter>
               <Button
                 variant="ghost"
@@ -144,7 +120,6 @@ export function ShareCard({
               >
                 Cancel
               </Button>
-
               <Button
                 variant="destructive"
                 onClick={handleDelete}

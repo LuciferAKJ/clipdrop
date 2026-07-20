@@ -1,36 +1,102 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ClipDrop
 
-## Getting Started
+A temporary clipboard and file-sharing service for instantly transferring text and files between devices — plus optional cross-device clipboard sync for authenticated users.
 
-First, run the development server:
+## Technology Stack
+
+- **Frontend**: Next.js (App Router), React, TypeScript, Tailwind CSS, shadcn/ui
+- **Backend**: Next.js Route Handlers, Prisma ORM
+- **Database**: Neon PostgreSQL (free tier)
+- **File Storage**: Cloudinary (free tier)
+- **Auth**: Clerk
+- **Deployment**: Vercel (free tier), serverless-only — no persistent servers, no Redis, no Docker
+- **Testing**: Vitest + Testing Library (unit/component), Playwright (e2e)
+
+## Features
+
+- Drag-and-drop or paste-based upload of text and files
+- Short share codes and shareable links (`/s/CODE`)
+- Configurable expiration, one-time downloads, password protection
+- Markdown and syntax-highlighted code preview on the receive page
+- Upload progress with cancellation support
+- Authenticated dashboard: upload history, per-share management
+- Device management: automatic device registration, rename, remove
+- Cross-device clipboard sync (polling-based, visibility-aware, conflict-resolved by latest-timestamp-wins)
+
+## Installation
+
+```bash
+git clone <repo-url>
+cd clipdrop
+npm install
+```
+
+## Environment Variables
+
+Create `.env.local`:
+
+```
+DATABASE_URL=""
+DIRECT_URL=""
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=""
+CLERK_SECRET_KEY=""
+CLERK_WEBHOOK_SECRET=""
+CLOUDINARY_CLOUD_NAME=""
+CLOUDINARY_API_KEY=""
+CLOUDINARY_API_SECRET=""
+IP_HASH_PEPPER=""
+CRON_SECRET=""
+```
+
+## Development
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Testing
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm run test           # unit + API + component tests
+npm run test:coverage  # with coverage report
+npm run test:e2e       # Playwright end-to-end tests
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Production Build
 
-## Learn More
+```bash
+npm run build
+npm run start
+```
 
-To learn more about Next.js, take a look at the following resources:
+## Clipboard Sync
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Authenticated devices poll `/api/clipboard` every 3 seconds while the tab is visible. Pushing a new local clipboard value and pulling a newer server value are mutually exclusive per tick; conflicts are resolved by whichever push reaches the server last (highest `updatedAt` wins) — there is no merge logic. See `hooks/useClipboardSync.ts`.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Device Sync
 
-## Deploy on Vercel
+Each browser generates a persistent `clientId` (`localStorage`) and registers once per session against the authenticated user via `POST /api/devices`. Manage registered devices at `/dashboard/devices`.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Deployment
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Deploys to Vercel's free tier. Required: Neon Postgres connection strings, Cloudinary credentials, Clerk keys + webhook secret, and a `CRON_SECRET` matching the cron job configured in `vercel.json` (daily expired-share cleanup).
+
+## Architecture
+
+Fully serverless: Next.js Route Handlers on Vercel, Neon Postgres for metadata, Cloudinary for binary storage, Clerk for auth. No background workers — expiration is enforced at read time plus a daily cron sweep; clipboard sync uses client-side polling rather than persistent connections, since Vercel serverless functions can't hold one open.
+
+## Folder Structure
+
+```
+app/                 Next.js App Router pages and API routes
+components/          UI components (dashboard, devices, share, providers)
+lib/                 Business logic, validation, clients, utilities
+hooks/               React hooks (clipboard sync, sync status)
+prisma/              Schema and migrations
+tests/               Unit, hook, component, and API tests
+e2e/                 Playwright end-to-end tests
+```
+
+## License
+
+[Add your chosen license here]

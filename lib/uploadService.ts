@@ -33,29 +33,40 @@ export class UploadCancelledError extends Error {
  */
 function buildFormData(payload: UploadPayload): FormData {
   const formData = new FormData();
+
   if (payload.text) formData.append("text", payload.text);
-  payload.files?.forEach((f) => formData.append("files", f));
+  payload.files?.forEach((file) => formData.append("files", file));
+
   if (payload.password) formData.append("password", payload.password);
   if (payload.oneTimeUse) formData.append("oneTimeUse", "true");
+
   return formData;
 }
 
 function parseResponse(xhr: XMLHttpRequest): UploadResult {
-  let data: any;
+  let data: unknown;
+
   try {
     data = JSON.parse(xhr.responseText);
   } catch {
     throw new Error("Invalid server response");
   }
+
   if (xhr.status < 200 || xhr.status >= 300) {
-    throw new Error(data?.error || "Upload failed");
+    const message =
+      typeof data === "object" && data !== null && "error" in data
+        ? String((data as { error?: unknown }).error)
+        : "Upload failed";
+
+    throw new Error(message);
   }
+
   return data as UploadResult;
 }
 
 export function startUpload(
   payload: UploadPayload,
-  onProgress?: (percent: number) => void
+  onProgress?: (percent: number) => void,
 ): UploadHandle {
   const xhr = new XMLHttpRequest();
 

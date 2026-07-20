@@ -24,7 +24,7 @@ export default async function DashboardPage() {
     orderBy: { createdAt: "desc" },
   });
 
-  const now = Date.now();
+  const now = new Date();
 
   const summaries: ShareSummary[] = shares.map((s) => ({
     id: s.id,
@@ -35,7 +35,7 @@ export default async function DashboardPage() {
     oneTimeUse: s.oneTimeUse,
     fileCount: s.files.length,
     hasText: !!s.textContent,
-    isExpired: s.expiresAt.getTime() < now,
+    isExpired: s.expiresAt < now,
   }));
 
   return (

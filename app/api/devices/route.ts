@@ -1,47 +1,47 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { validateDeviceRegistration } from "@/lib/validation";
+import { unauthorized, badRequest, ok } from "@/lib/apiResponses";
+import { logger } from "@/lib/logger";
 
 export async function GET() {
   const { userId } = await auth();
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  if (!userId) return unauthorized();
 
   const devices = await prisma.device.findMany({
     where: { userId },
     orderBy: { lastSeenAt: "desc" },
   });
 
-  return NextResponse.json({ devices });
+  return ok({ devices });
 }
 
 export async function POST(req: NextRequest) {
   const { userId } = await auth();
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  if (!userId) return unauthorized();
 
   const body = await req.json().catch(() => null);
-  if (!body) {
-    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
-  }
+  if (!body) return badRequest("Invalid request body");
 
   const { clientId, name } = body;
 
   try {
     validateDeviceRegistration(clientId, name);
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Invalid input";
-    return NextResponse.json({ error: message }, { status: 400 });
+    return badRequest(err instanceof Error ? err.message : "Invalid input");
   }
 
-  await prisma.device.upsert({
-    where: { userId_clientId: { userId, clientId } },
-    update: { lastSeenAt: new Date() },
-    create: { userId, clientId, name },
-  });
+  try {
+    await prisma.device.upsert({
+      where: { userId_clientId: { userId, clientId } },
+      update: { lastSeenAt: new Date() },
+      create: { userId, clientId, name },
+    });
+  } catch (err) {
+    logger.error("Device upsert failed", err);
+    throw err; // let Next.js's default error boundary handle the 500; withErrorHandling not used here since this is the only DB call
+  }
 
-  return NextResponse.json({ success: true });
+  return ok({ success: true });
 }

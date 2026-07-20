@@ -12,7 +12,6 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { splitDeviceLabel } from "@/lib/deviceDisplay";
-import { getCurrentClientId } from "@/lib/deviceClient";
 import type { DeviceSummary } from "@/app/dashboard/devices/page";
 
 export function DeviceCard({
@@ -127,8 +126,8 @@ export function DeviceCard({
           <p className="text-sm text-muted-foreground">{secondary}</p>
         )}
         <p className="text-xs text-muted-foreground mt-1">
-          Registered {new Date(device.registeredAt).toLocaleDateString()} · Last seen{" "}
-          {new Date(device.lastSeenAt).toLocaleString()}
+          Registered {new Date(device.registeredAt).toLocaleDateString()} · Last
+          seen {new Date(device.lastSeenAt).toLocaleString()}
         </p>
       </div>
 
@@ -142,7 +141,11 @@ export function DeviceCard({
             variant="destructive"
             onClick={() => setDeleteOpen(true)}
             disabled={isCurrent}
-            title={isCurrent ? "Can't remove the device you're currently using" : undefined}
+            title={
+              isCurrent
+                ? "Can't remove the device you're currently using"
+                : undefined
+            }
           >
             Remove
           </Button>
@@ -155,13 +158,22 @@ export function DeviceCard({
             <DialogTitle>Remove this device?</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            <strong>{primary}</strong> will no longer be registered to your account.
+            <strong>{primary}</strong> will no longer be registered to your
+            account.
           </p>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setDeleteOpen(false)} disabled={deleting}>
+            <Button
+              variant="ghost"
+              onClick={() => setDeleteOpen(false)}
+              disabled={deleting}
+            >
               Cancel
             </Button>
-            <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={deleting}
+            >
               {deleting ? "Removing..." : "Remove"}
             </Button>
           </DialogFooter>

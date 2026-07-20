@@ -1,3 +1,5 @@
+import type { ClipboardContentType } from "@/lib/types/clipboard";
+
 export const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 export const ALLOWED_MIME_PREFIXES = [
@@ -11,13 +13,16 @@ export const ALLOWED_MIME_PREFIXES = [
 
 export const MAX_DEVICE_NAME_LENGTH = 100;
 const MAX_CLIENT_ID_LENGTH = 100;
+const MAX_TEXT_LENGTH = 10_000;
+
+const VALID_CONTENT_TYPES: ClipboardContentType[] = ["TEXT", "SHARE"];
 
 export function validateTextShare(text: string) {
   if (!text || text.trim().length === 0) {
     throw new Error("Text cannot be empty");
   }
 
-  if (text.length > 10000) {
+  if (text.length > MAX_TEXT_LENGTH) {
     throw new Error("Text too long");
   }
 }
@@ -28,7 +33,7 @@ export function validateFile(file: File) {
   }
 
   const allowed = ALLOWED_MIME_PREFIXES.some((prefix) =>
-    file.type.startsWith(prefix)
+    file.type.startsWith(prefix),
   );
 
   if (!allowed) {
@@ -36,10 +41,7 @@ export function validateFile(file: File) {
   }
 }
 
-export function validateDeviceRegistration(
-  clientId: unknown,
-  name: unknown
-) {
+export function validateDeviceRegistration(clientId: unknown, name: unknown) {
   if (typeof clientId !== "string" || !clientId.trim()) {
     throw new Error("clientId is required");
   }
@@ -64,5 +66,34 @@ export function validateDeviceName(name: unknown) {
 
   if (name.length > MAX_DEVICE_NAME_LENGTH) {
     throw new Error("name is too long");
+  }
+}
+
+export function validateClipboardSync(
+  contentType: unknown,
+  textContent: unknown,
+  shareId: unknown,
+) {
+  if (
+    typeof contentType !== "string" ||
+    !VALID_CONTENT_TYPES.includes(contentType as ClipboardContentType)
+  ) {
+    throw new Error("contentType must be TEXT or SHARE");
+  }
+
+  if (contentType === "TEXT") {
+    if (typeof textContent !== "string" || !textContent.trim()) {
+      throw new Error("textContent is required when contentType is TEXT");
+    }
+
+    if (textContent.length > MAX_TEXT_LENGTH) {
+      throw new Error("textContent is too long");
+    }
+  }
+
+  if (contentType === "SHARE") {
+    if (typeof shareId !== "string" || !shareId.trim()) {
+      throw new Error("shareId is required when contentType is SHARE");
+    }
   }
 }

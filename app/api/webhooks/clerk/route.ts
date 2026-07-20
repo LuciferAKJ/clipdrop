@@ -3,6 +3,16 @@ import { headers } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+type ClerkWebhookEvent = {
+  type: string;
+  data: {
+    id?: string;
+    email_addresses?: Array<{
+      email_address: string;
+    }>;
+  };
+};
+
 export async function POST(req: NextRequest) {
   const payload = await req.text();
 
@@ -16,15 +26,12 @@ export async function POST(req: NextRequest) {
 
   const webhook = new Webhook(process.env.CLERK_WEBHOOK_SECRET!);
 
-  let event: any;
+  let event: ClerkWebhookEvent;
 
   try {
-    event = webhook.verify(payload, svixHeaders);
+    event = webhook.verify(payload, svixHeaders) as ClerkWebhookEvent;
   } catch {
-    return NextResponse.json(
-      { error: "Invalid signature" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
   switch (event.type) {
@@ -33,13 +40,13 @@ export async function POST(req: NextRequest) {
       const { id, email_addresses } = event.data;
 
       await prisma.user.upsert({
-        where: { id },
+        where: { id: id! },
         update: {
-          email: email_addresses[0]?.email_address ?? "",
+          email: email_addresses?.[0]?.email_address ?? "",
         },
         create: {
-          id,
-          email: email_addresses[0]?.email_address ?? "",
+          id: id!,
+          email: email_addresses?.[0]?.email_address ?? "",
         },
       });
 
@@ -48,11 +55,13 @@ export async function POST(req: NextRequest) {
 
     case "user.deleted": {
       if (event.data.id) {
-        await prisma.user.delete({
-          where: {
-            id: event.data.id,
-          },
-        }).catch(() => {});
+        await prisma.user
+          .delete({
+            where: {
+              id: event.data.id,
+            },
+          })
+          .catch(() => {});
       }
 
       break;
