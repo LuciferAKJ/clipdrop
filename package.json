@@ -32,7 +32,7 @@
     "qrcode": "^1.5.4",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "react-dropzone": "^17.0.0",
+    "react-dropzone": "^19.1.1",
     "react-hook-form": "^7.81.0",
     "react-markdown": "^10.1.0",
     "react-syntax-highlighter": "^16.1.1",
