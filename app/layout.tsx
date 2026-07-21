@@ -17,8 +17,27 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ClipDrop",
-  description: "Share text and files instantly. Expires automatically.",
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_APP_URL || "https://your-app.vercel.app",
+  ),
+  title: {
+    default: "ClipDrop — Share instantly, expires automatically",
+    template: "%s · ClipDrop",
+  },
+  description:
+    "Share text and files instantly across devices. No account required, expires automatically.",
+  openGraph: {
+    title: "ClipDrop",
+    description: "Share text and files instantly across devices.",
+    type: "website",
+    siteName: "ClipDrop",
+  },
+  twitter: {
+    card: "summary",
+    title: "ClipDrop",
+    description: "Share text and files instantly across devices.",
+  },
+  robots: { index: true, follow: true },
 };
 
 export default function RootLayout({

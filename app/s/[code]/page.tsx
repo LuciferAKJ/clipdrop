@@ -1,11 +1,12 @@
 "use client";
+
 import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { TextViewer } from "@/components/share/TextViewer";
+import { LazyTextViewer } from "@/components/share/LazyTextViewer";
 
 interface FileMeta {
   id: string;
@@ -30,6 +31,7 @@ interface ShareMeta extends ShareApiError {
 
 export default function ReceivePage() {
   const { code } = useParams<{ code: string }>();
+
   const [needsPassword, setNeedsPassword] = useState(false);
   const [password, setPassword] = useState("");
   const [data, setData] = useState<ShareData | null>(null);
@@ -43,14 +45,23 @@ export default function ReceivePage() {
   const fetchContent = useCallback(
     async (pw?: string) => {
       setChecking(true);
+
       try {
         const res = await fetch(`/api/share/${code}`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ password: pw || undefined }),
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            password: pw || undefined,
+          }),
         });
+
         const json: ShareData & ShareApiError = await res.json();
-        if (!res.ok) throw new Error(json.error || "Failed to retrieve");
+
+        if (!res.ok) {
+          throw new Error(json.error || "Failed to retrieve");
+        }
 
         setData(json);
         setNeedsPassword(false);
@@ -69,7 +80,11 @@ export default function ReceivePage() {
       try {
         const res = await fetch(`/api/share/${code}`);
         const meta: ShareMeta = await res.json();
-        if (!res.ok) throw new Error(meta.error || "Not found");
+
+        if (!res.ok) {
+          throw new Error(meta.error || "Not found");
+        }
+
         if (cancelled) return;
 
         if (meta.requiresPassword) {
@@ -87,6 +102,7 @@ export default function ReceivePage() {
     }
 
     checkMeta();
+
     return () => {
       cancelled = true;
     };
@@ -121,6 +137,7 @@ export default function ReceivePage() {
     return (
       <main className="max-w-sm mx-auto p-8 space-y-3">
         <h1 className="text-xl font-semibold">Password required</h1>
+
         <Input
           type="password"
           placeholder="Enter password"
@@ -128,6 +145,7 @@ export default function ReceivePage() {
           onChange={(e) => setPassword(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleUnlock()}
         />
+
         <Button onClick={handleUnlock} disabled={checking} className="w-full">
           {checking ? "Checking..." : "Unlock"}
         </Button>
@@ -139,7 +157,7 @@ export default function ReceivePage() {
     <main className="max-w-xl mx-auto p-8 space-y-4">
       <h1 className="text-xl font-semibold">Shared content</h1>
 
-      {data?.textContent && <TextViewer text={data.textContent} />}
+      {data?.textContent && <LazyTextViewer text={data.textContent} />}
 
       {data?.files && data.files.length > 0 && (
         <ul className="space-y-2">
@@ -152,6 +170,7 @@ export default function ReceivePage() {
                 className="flex justify-between items-center rounded-lg border p-4 hover:bg-muted transition-colors"
               >
                 <span className="truncate">{f.originalName}</span>
+
                 <span className="text-sm text-muted-foreground shrink-0 ml-3">
                   {(f.sizeBytes / 1024).toFixed(1)} KB
                 </span>

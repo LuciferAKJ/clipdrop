@@ -7,7 +7,11 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { ShareResult } from "./ShareResult";
 import { UploadProgress } from "./UploadProgress";
-import { startUpload, UploadCancelledError, type UploadHandle } from "@/lib/uploadService";
+import {
+  startUpload,
+  UploadCancelledError,
+  type UploadHandle,
+} from "@/lib/uploadService";
 
 type BatchStatus = "idle" | "uploading" | "error" | "cancelled";
 
@@ -24,7 +28,7 @@ export function UploadZone() {
 
   const onDrop = useCallback(
     (accepted: File[]) => setFiles((f) => [...f, ...accepted]),
-    []
+    [],
   );
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -61,8 +65,13 @@ export function UploadZone() {
     setProgress(0);
 
     const uploadHandle = startUpload(
-      { text: text || undefined, files, password: password || undefined, oneTimeUse },
-      (percent) => setProgress(percent)
+      {
+        text: text || undefined,
+        files,
+        password: password || undefined,
+        oneTimeUse,
+      },
+      (percent) => setProgress(percent),
     );
     setHandle(uploadHandle);
 
@@ -104,9 +113,12 @@ export function UploadZone() {
     <div className="space-y-4" onPaste={handlePaste}>
       <div
         {...getRootProps()}
+        role="button"
+        tabIndex={0}
+        aria-label="Upload files: drag and drop, click to browse, or paste an image"
         className={`rounded-xl border-2 border-dashed p-10 text-center transition-colors
-          ${isDragActive ? "border-primary bg-primary/5" : "border-muted-foreground/30"}
-          ${isUploading ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+    ${isDragActive ? "border-primary bg-primary/5" : "border-muted-foreground/30"}
+    ${isUploading ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
       >
         <input {...getInputProps()} />
         <p className="text-muted-foreground">
@@ -117,7 +129,10 @@ export function UploadZone() {
       {files.length > 0 && (
         <ul className="text-sm space-y-1">
           {files.map((f, i) => (
-            <li key={i} className="flex justify-between items-center rounded-md bg-muted px-3 py-1.5">
+            <li
+              key={i}
+              className="flex justify-between items-center rounded-md bg-muted px-3 py-1.5"
+            >
               <span className="truncate">{f.name}</span>
               {!isUploading && (
                 <button
@@ -133,9 +148,15 @@ export function UploadZone() {
       )}
 
       {status === "uploading" && (
-        <UploadProgress percent={progress} status="uploading" onCancel={cancelUpload} />
+        <UploadProgress
+          percent={progress}
+          status="uploading"
+          onCancel={cancelUpload}
+        />
       )}
-      {status === "cancelled" && <UploadProgress percent={0} status="cancelled" />}
+      {status === "cancelled" && (
+        <UploadProgress percent={0} status="cancelled" />
+      )}
 
       <Textarea
         placeholder="Or paste/type text..."

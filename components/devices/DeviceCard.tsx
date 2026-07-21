@@ -89,6 +89,7 @@ export function DeviceCard({
               onChange={(e) => setNameInput(e.target.value)}
               className="h-8 text-sm"
               autoFocus
+              aria-label="Device name"
               onKeyDown={(e) => {
                 if (e.key === "Enter") handleRename();
                 if (e.key === "Escape") {
@@ -153,11 +154,14 @@ export function DeviceCard({
       )}
 
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <DialogContent>
+        <DialogContent aria-describedby="delete-device-description">
           <DialogHeader>
             <DialogTitle>Remove this device?</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-muted-foreground">
+          <p
+            id="delete-device-description"
+            className="text-sm text-muted-foreground"
+          >
             <strong>{primary}</strong> will no longer be registered to your
             account.
           </p>
