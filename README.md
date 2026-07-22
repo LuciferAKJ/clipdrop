@@ -100,3 +100,41 @@ e2e/                 Playwright end-to-end tests
 ## License
 
 [Add your chosen license here]
+
+## Screenshots
+
+_Add screenshots or a short GIF of the upload flow, receive page, and dashboard here before publishing._
+
+## API Overview
+
+| Route                   | Method         | Purpose                                            |
+| ----------------------- | -------------- | -------------------------------------------------- |
+| `/api/upload`           | POST           | Create a share (text and/or files)                 |
+| `/api/share/[code]`     | GET            | Check if a share requires a password               |
+| `/api/share/[code]`     | POST           | Retrieve share content (password-gated)            |
+| `/api/dashboard/delete` | DELETE         | Delete an owned share                              |
+| `/api/devices`          | GET / POST     | List / register devices                            |
+| `/api/devices/[id]`     | PATCH / DELETE | Rename / remove a device                           |
+| `/api/clipboard`        | GET / PUT      | Pull / push cross-device clipboard state           |
+| `/api/cron/cleanup`     | GET            | Scheduled expired-share cleanup (Vercel Cron only) |
+
+## Limitations
+
+- Clipboard sync is polling-based (3s interval), not instant push — a deliberate free-tier-compatible trade-off (see Architecture docs).
+- File uploads are capped at 10MB per file on Cloudinary's free tier.
+- Neon's free tier suspends after inactivity, causing a 1–2s cold-start delay on the first request after idle.
+- No end-to-end encryption yet — content is encrypted in transit (HTTPS) and at rest by the underlying providers, but not client-side.
+
+## Future Improvements
+
+- Real-time clipboard sync via a managed WebSocket provider (Pusher/Ably), if polling proves insufficient in practice.
+- End-to-end encryption for share content.
+- Full folder reorganization of `lib/` into feature subfolders (see `docs/ARCHITECTURE.md`).
+
+## Acknowledgements
+
+Built with Next.js, Prisma, Neon, Cloudinary, Clerk, and shadcn/ui.
+
+## License
+
+[Add your chosen license — e.g. MIT — and create a matching `LICENSE` file at the repo root.]
