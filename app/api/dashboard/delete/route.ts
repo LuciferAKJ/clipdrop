@@ -27,7 +27,7 @@ export async function DELETE(req: NextRequest) {
   }
 
   for (const file of share.files) {
-    await deleteFromCloudinary(file.publicId).catch(() => {});
+    await deleteFromCloudinary(file.publicId, file.mimeType).catch(() => {});
   }
   await prisma.share.delete({ where: { id: share.id } });
 

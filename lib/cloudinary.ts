@@ -7,15 +7,11 @@ cloudinary.config({
   secure: true,
 });
 
-export async function uploadToCloudinary(
-  buffer: Buffer,
-  filename: string
-) {
+export async function uploadToCloudinary(buffer: Buffer, filename: string) {
   return new Promise<{
     url: string;
     publicId: string;
   }>((resolve, reject) => {
-
     const stream = cloudinary.uploader.upload_stream(
       {
         resource_type: "auto",
@@ -23,7 +19,6 @@ export async function uploadToCloudinary(
         filename_override: filename,
       },
       (error, result) => {
-
         if (error || !result) {
           return reject(error);
         }
@@ -32,17 +27,25 @@ export async function uploadToCloudinary(
           url: result.secure_url,
           publicId: result.public_id,
         });
-      }
+      },
     );
 
     stream.end(buffer);
   });
 }
 
-export async function deleteFromCloudinary(
-  publicId: string
-) {
+function resolveResourceType(mimeType: string) {
+  if (mimeType.startsWith("image/")) return "image";
+
+  if (mimeType.startsWith("video/") || mimeType.startsWith("audio/")) {
+    return "video";
+  }
+
+  return "raw";
+}
+
+export async function deleteFromCloudinary(publicId: string, mimeType: string) {
   await cloudinary.uploader.destroy(publicId, {
-    resource_type: "raw",
+    resource_type: resolveResourceType(mimeType),
   });
 }
