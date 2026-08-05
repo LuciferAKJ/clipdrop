@@ -7,14 +7,18 @@ cloudinary.config({
   secure: true,
 });
 
-export async function uploadToCloudinary(buffer: Buffer, filename: string) {
+export async function uploadToCloudinary(
+  buffer: Buffer,
+  filename: string,
+  mimeType: string,
+) {
   return new Promise<{
     url: string;
     publicId: string;
   }>((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
       {
-        resource_type: "auto",
+        resource_type: resolveResourceType(mimeType),
         folder: "clipdrop",
         filename_override: filename,
       },

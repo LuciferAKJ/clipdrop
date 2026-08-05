@@ -11,15 +11,27 @@ import {
   startUpload,
   UploadCancelledError,
   type UploadHandle,
+  type ExpiryOption,
 } from "@/lib/uploadService";
 
 type BatchStatus = "idle" | "uploading" | "error" | "cancelled";
+
+const EXPIRY_CHOICES: { value: ExpiryOption; label: string }[] = [
+  { value: "1h", label: "1 hour" },
+  { value: "6h", label: "6 hours" },
+  { value: "12h", label: "12 hours" },
+  { value: "1d", label: "1 day" },
+  { value: "3d", label: "3 days" },
+  { value: "7d", label: "7 days" },
+  { value: "30d", label: "30 days" },
+];
 
 export function UploadZone() {
   const [text, setText] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [password, setPassword] = useState("");
   const [oneTimeUse, setOneTimeUse] = useState(false);
+  const [expiry, setExpiry] = useState<ExpiryOption>("1h");
 
   const [status, setStatus] = useState<BatchStatus>("idle");
   const [progress, setProgress] = useState(0);
@@ -70,6 +82,7 @@ export function UploadZone() {
         files,
         password: password || undefined,
         oneTimeUse,
+        expiry,
       },
       (percent) => setProgress(percent),
     );
@@ -99,6 +112,7 @@ export function UploadZone() {
     setFiles([]);
     setPassword("");
     setOneTimeUse(false);
+    setExpiry("1h");
     setStatus("idle");
     setProgress(0);
   }
@@ -184,6 +198,28 @@ export function UploadZone() {
           />
           Delete after first download
         </label>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <label
+          htmlFor="expiry-select"
+          className="text-sm text-muted-foreground"
+        >
+          Expires in
+        </label>
+        <select
+          id="expiry-select"
+          value={expiry}
+          onChange={(e) => setExpiry(e.target.value as ExpiryOption)}
+          disabled={isUploading}
+          className="rounded-md border border-input bg-background px-2 py-1.5 text-sm"
+        >
+          {EXPIRY_CHOICES.map((choice) => (
+            <option key={choice.value} value={choice.value}>
+              {choice.label}
+            </option>
+          ))}
+        </select>
       </div>
 
       <Button onClick={handleUpload} disabled={isUploading} className="w-full">

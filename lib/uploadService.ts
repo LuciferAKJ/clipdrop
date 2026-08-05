@@ -1,8 +1,11 @@
+export type ExpiryOption = "1h" | "6h" | "12h" | "1d" | "3d" | "7d" | "30d";
+
 export interface UploadPayload {
   text?: string;
   files?: File[];
   password?: string;
   oneTimeUse?: boolean;
+  expiry?: ExpiryOption;
 }
 
 export interface UploadResult {
@@ -39,6 +42,7 @@ function buildFormData(payload: UploadPayload): FormData {
 
   if (payload.password) formData.append("password", payload.password);
   if (payload.oneTimeUse) formData.append("oneTimeUse", "true");
+  if (payload.expiry) formData.append("expiry", payload.expiry);
 
   return formData;
 }
