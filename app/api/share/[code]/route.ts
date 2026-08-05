@@ -70,8 +70,21 @@ export async function POST(
     createdAt: share.createdAt,
   };
 
-  if (share.oneTimeUse) {
-    // delete cloudinary first
+  const updatedShare = await prisma.share.update({
+    where: {
+      id: share.id,
+    },
+    data: {
+      downloadCount: {
+        increment: 1,
+      },
+    },
+  });
+
+  if (
+    updatedShare.downloadLimit !== null &&
+    updatedShare.downloadCount >= updatedShare.downloadLimit
+  ) {
     for (const file of share.files) {
       await deleteFromCloudinary(file.publicId, file.mimeType).catch(() => {});
     }
@@ -79,17 +92,6 @@ export async function POST(
     await prisma.share.delete({
       where: {
         id: share.id,
-      },
-    });
-  } else {
-    await prisma.share.update({
-      where: {
-        id: share.id,
-      },
-      data: {
-        downloadCount: {
-          increment: 1,
-        },
       },
     });
   }
