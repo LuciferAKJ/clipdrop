@@ -40,7 +40,6 @@ export function UploadZone() {
   const [text, setText] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [password, setPassword] = useState("");
-  const [oneTimeUse, setOneTimeUse] = useState(false);
   const [downloadLimit, setDownloadLimit] = useState<string>("");
   const [expiry, setExpiry] = useState<ExpiryOption>("1h");
 
@@ -92,7 +91,6 @@ export function UploadZone() {
         text: text || undefined,
         files,
         password: password || undefined,
-        oneTimeUse,
         downloadLimit: downloadLimit ? parseInt(downloadLimit, 10) : null,
         expiry,
       },
@@ -123,7 +121,6 @@ export function UploadZone() {
     setText("");
     setFiles([]);
     setPassword("");
-    setOneTimeUse(false);
     setDownloadLimit("");
     setExpiry("1h");
     setStatus("idle");
@@ -193,7 +190,7 @@ export function UploadZone() {
         disabled={isUploading}
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3">
         <Input
           type="password"
           placeholder="Password (optional)"
@@ -201,16 +198,6 @@ export function UploadZone() {
           onChange={(e) => setPassword(e.target.value)}
           disabled={isUploading}
         />
-        <label className="flex items-center gap-2 text-sm text-muted-foreground px-1">
-          <input
-            type="checkbox"
-            checked={oneTimeUse}
-            onChange={(e) => setOneTimeUse(e.target.checked)}
-            disabled={isUploading}
-            className="accent-primary"
-          />
-          Delete after first download
-        </label>
       </div>
 
       <div className="flex flex-wrap items-center gap-4">
