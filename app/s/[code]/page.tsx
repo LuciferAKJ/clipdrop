@@ -29,6 +29,48 @@ interface ShareMeta extends ShareApiError {
   requiresPassword?: boolean;
 }
 
+function getFileIcon(mime: string) {
+  if (mime.startsWith("image/")) return "🖼️";
+  if (mime.startsWith("video/")) return "🎥";
+  if (mime.startsWith("audio/")) return "🎵";
+  if (mime.includes("pdf")) return "📄";
+  if (mime.includes("zip") || mime.includes("rar") || mime.includes("7z"))
+    return "📦";
+  if (
+    mime.includes("javascript") ||
+    mime.includes("typescript") ||
+    mime.includes("json") ||
+    mime.includes("html") ||
+    mime.includes("css")
+  )
+    return "💻";
+
+  return "📁";
+}
+
+function getFileTypeLabel(mime: string) {
+  if (mime.includes("pdf")) return "PDF Document";
+  if (mime.includes("word")) return "Word Document";
+  if (mime.includes("spreadsheet")) return "Excel Spreadsheet";
+  if (mime.includes("presentation")) return "PowerPoint Presentation";
+  if (mime.includes("zip")) return "ZIP Archive";
+  if (mime.startsWith("image/")) return "Image";
+  if (mime.startsWith("video/")) return "Video";
+  if (mime.startsWith("audio/")) return "Audio";
+  if (mime.includes("javascript")) return "JavaScript File";
+  if (mime.includes("typescript")) return "TypeScript File";
+  if (mime.includes("json")) return "JSON File";
+  if (mime.includes("html")) return "HTML File";
+  if (mime.includes("css")) return "CSS File";
+  return "File";
+}
+
+function formatSize(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+}
+
 export default function ReceivePage() {
   const { code } = useParams<{ code: string }>();
 
@@ -39,9 +81,6 @@ export default function ReceivePage() {
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Stable per `code` — takes password as a parameter rather than
-  // reading it from closure, so this identity doesn't change on every
-  // keystroke and can safely be listed as an effect dependency.
   const fetchContent = useCallback(
     async (pw?: string) => {
       setChecking(true);
@@ -127,7 +166,8 @@ export default function ReceivePage() {
 
   if (error) {
     return (
-      <main className="max-w-xl mx-auto p-8">
+      <main className="max-w-xl mx-auto p-8 text-center space-y-3">
+        <div className="text-4xl">⚠️</div>
         <p className="text-destructive font-medium">{error}</p>
       </main>
     );
@@ -135,8 +175,14 @@ export default function ReceivePage() {
 
   if (needsPassword) {
     return (
-      <main className="max-w-sm mx-auto p-8 space-y-3">
-        <h1 className="text-xl font-semibold">Password required</h1>
+      <main className="max-w-sm mx-auto p-8 space-y-4 text-center">
+        <div className="text-4xl">🔒</div>
+        <div className="space-y-1">
+          <h1 className="text-xl font-semibold">Password Protected</h1>
+          <p className="text-sm text-muted-foreground">
+            This share is protected.
+          </p>
+        </div>
 
         <Input
           type="password"
@@ -154,26 +200,38 @@ export default function ReceivePage() {
   }
 
   return (
-    <main className="max-w-xl mx-auto p-8 space-y-4">
-      <h1 className="text-xl font-semibold">Shared content</h1>
+    <main className="max-w-xl mx-auto p-8 space-y-6">
+      <div className="space-y-1">
+        <h1 className="text-3xl font-bold">Shared Files</h1>
+        <p className="text-muted-foreground">
+          Download or view the shared content below.
+        </p>
+      </div>
 
       {data?.textContent && <LazyTextViewer text={data.textContent} />}
 
       {data?.files && data.files.length > 0 && (
-        <ul className="space-y-2">
+        <ul className="space-y-3">
           {data.files.map((f) => (
             <li key={f.id}>
               <a
                 href={f.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex justify-between items-center rounded-lg border p-4 hover:bg-muted transition-colors"
+                className="flex justify-between items-center rounded-xl border p-4 hover:bg-accent hover:text-accent-foreground transition-colors group"
               >
-                <span className="truncate">{f.originalName}</span>
+                <div>
+                  <p className="font-medium">
+                    {getFileIcon(f.mimeType)} {f.originalName}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {getFileTypeLabel(f.mimeType)} • {formatSize(f.sizeBytes)}
+                  </p>
+                </div>
 
-                <span className="text-sm text-muted-foreground shrink-0 ml-3">
-                  {(f.sizeBytes / 1024).toFixed(1)} KB
-                </span>
+                <Button size="sm" variant="outline" className="shrink-0 ml-3">
+                  Download →
+                </Button>
               </a>
             </li>
           ))}
@@ -181,7 +239,13 @@ export default function ReceivePage() {
       )}
 
       {!data?.textContent && (!data?.files || data.files.length === 0) && (
-        <p className="text-muted-foreground">No content available.</p>
+        <div className="text-center py-12 space-y-2">
+          <div className="text-4xl">📭</div>
+          <h2 className="font-semibold">Nothing was shared.</h2>
+          <p className="text-sm text-muted-foreground">
+            This link doesn&apos;t contain any files or text.
+          </p>
+        </div>
       )}
     </main>
   );

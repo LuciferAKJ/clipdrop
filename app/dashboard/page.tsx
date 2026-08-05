@@ -9,7 +9,7 @@ export interface ShareSummary {
   createdAt: string;
   expiresAt: string;
   downloadCount: number;
-  oneTimeUse: boolean;
+  downloadLimit: number | null;
   fileCount: number;
   hasText: boolean;
   isExpired: boolean;
@@ -32,7 +32,7 @@ export default async function DashboardPage() {
     createdAt: s.createdAt.toISOString(),
     expiresAt: s.expiresAt.toISOString(),
     downloadCount: s.downloadCount,
-    oneTimeUse: s.oneTimeUse,
+    downloadLimit: s.downloadLimit,
     fileCount: s.files.length,
     hasText: !!s.textContent,
     isExpired: s.expiresAt < now,

@@ -25,6 +25,22 @@ function Badge({ expired }: { expired: boolean }) {
   );
 }
 
+function relativeTime(date: string) {
+  const diff = new Date(date).getTime() - Date.now();
+  const abs = Math.abs(diff);
+  const minutes = Math.floor(abs / 60000);
+  const hours = Math.floor(abs / 3600000);
+  const days = Math.floor(abs / 86400000);
+
+  if (minutes < 60)
+    return `${minutes} min${minutes === 1 ? "" : "s"} ${diff > 0 ? "left" : "ago"}`;
+
+  if (hours < 24)
+    return `${hours} hour${hours === 1 ? "" : "s"} ${diff > 0 ? "left" : "ago"}`;
+
+  return `${days} day${days === 1 ? "" : "s"} ${diff > 0 ? "left" : "ago"}`;
+}
+
 export function ShareCard({
   share,
   onDeleted,
@@ -34,7 +50,7 @@ export function ShareCard({
 }) {
   const [deleting, setDeleting] = useState(false);
   const [open, setOpen] = useState(false);
-  const shareHref = `/s/${share.code}`; // relative — pure, no window access needed at render
+  const shareHref = `/s/${share.code}`;
 
   function copyLink() {
     if (typeof window === "undefined") return;
@@ -63,22 +79,35 @@ export function ShareCard({
     }
   }
 
+  const downloadDisplay =
+    share.downloadLimit !== null && share.downloadLimit !== undefined
+      ? `${share.downloadCount} / ${share.downloadLimit}`
+      : `${share.downloadCount} (Unlimited)`;
+
+  const contentDisplay =
+    [
+      share.fileCount > 0
+        ? `${share.fileCount} file${share.fileCount !== 1 ? "s" : ""}`
+        : null,
+      share.hasText ? "Text" : null,
+    ]
+      .filter(Boolean)
+      .join(" · ") || "Empty";
+
   return (
     <div className="rounded-xl border p-4 space-y-3">
       <div className="flex items-center justify-between">
-        <p className="font-mono font-semibold tracking-wide">{share.code}</p>
+        <p className="font-mono font-semibold tracking-wide text-lg">
+          {share.code}
+        </p>
         <Badge expired={share.isExpired} />
       </div>
 
       <div className="text-sm text-muted-foreground space-y-1">
-        <p>Created: {new Date(share.createdAt).toLocaleString()}</p>
-        <p>Expires: {new Date(share.expiresAt).toLocaleString()}</p>
-        <p>Downloads: {share.downloadCount}</p>
-        <p>
-          {share.fileCount} file{share.fileCount !== 1 ? "s" : ""}
-          {share.hasText ? " · has text" : ""}
-          {share.oneTimeUse ? " · one-time" : ""}
-        </p>
+        <p>📅 Created: {relativeTime(share.createdAt)}</p>
+        <p>⏳ Expires: {relativeTime(share.expiresAt)}</p>
+        <p>⬇ Downloads: {downloadDisplay}</p>
+        <p>📄 Content: {contentDisplay}</p>
       </div>
 
       <div className="flex gap-2 pt-1">
