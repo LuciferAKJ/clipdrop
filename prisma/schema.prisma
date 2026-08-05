@@ -18,6 +18,7 @@ model Share {
   textContent   String?
   passwordHash  String?
   oneTimeUse    Boolean  @default(false)
+  downloadLimit Int?
   encrypted     Boolean  @default(false)
   downloadCount Int      @default(0)
   expiresAt     DateTime
@@ -51,12 +52,12 @@ model File {
 }
 
 model User {
-  id        String   @id
-  email     String   @unique
-  createdAt DateTime @default(now())
+  id            String         @id
+  email         String         @unique
+  createdAt     DateTime       @default(now())
   devices       Device[]
   clipboardSync ClipboardSync?
-  shares Share[]
+  shares        Share[]
 }
 
 model Device {

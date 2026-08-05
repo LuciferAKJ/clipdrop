@@ -5,6 +5,7 @@ export interface UploadPayload {
   files?: File[];
   password?: string;
   oneTimeUse?: boolean;
+  downloadLimit?: number | null;
   expiry?: ExpiryOption;
 }
 
@@ -42,6 +43,9 @@ function buildFormData(payload: UploadPayload): FormData {
 
   if (payload.password) formData.append("password", payload.password);
   if (payload.oneTimeUse) formData.append("oneTimeUse", "true");
+  if (payload.downloadLimit !== undefined && payload.downloadLimit !== null) {
+    formData.append("downloadLimit", String(payload.downloadLimit));
+  }
   if (payload.expiry) formData.append("expiry", payload.expiry);
 
   return formData;

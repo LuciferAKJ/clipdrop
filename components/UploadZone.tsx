@@ -26,11 +26,22 @@ const EXPIRY_CHOICES: { value: ExpiryOption; label: string }[] = [
   { value: "30d", label: "30 days" },
 ];
 
+const DOWNLOAD_LIMIT_CHOICES: { value: string; label: string }[] = [
+  { value: "", label: "Unlimited" },
+  { value: "1", label: "1" },
+  { value: "5", label: "5" },
+  { value: "10", label: "10" },
+  { value: "25", label: "25" },
+  { value: "50", label: "50" },
+  { value: "100", label: "100" },
+];
+
 export function UploadZone() {
   const [text, setText] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [password, setPassword] = useState("");
   const [oneTimeUse, setOneTimeUse] = useState(false);
+  const [downloadLimit, setDownloadLimit] = useState<string>("");
   const [expiry, setExpiry] = useState<ExpiryOption>("1h");
 
   const [status, setStatus] = useState<BatchStatus>("idle");
@@ -82,6 +93,7 @@ export function UploadZone() {
         files,
         password: password || undefined,
         oneTimeUse,
+        downloadLimit: downloadLimit ? parseInt(downloadLimit, 10) : null,
         expiry,
       },
       (percent) => setProgress(percent),
@@ -112,6 +124,7 @@ export function UploadZone() {
     setFiles([]);
     setPassword("");
     setOneTimeUse(false);
+    setDownloadLimit("");
     setExpiry("1h");
     setStatus("idle");
     setProgress(0);
@@ -180,7 +193,7 @@ export function UploadZone() {
         disabled={isUploading}
       />
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <Input
           type="password"
           placeholder="Password (optional)"
@@ -200,26 +213,50 @@ export function UploadZone() {
         </label>
       </div>
 
-      <div className="flex items-center gap-2">
-        <label
-          htmlFor="expiry-select"
-          className="text-sm text-muted-foreground"
-        >
-          Expires in
-        </label>
-        <select
-          id="expiry-select"
-          value={expiry}
-          onChange={(e) => setExpiry(e.target.value as ExpiryOption)}
-          disabled={isUploading}
-          className="rounded-md border border-input bg-background px-2 py-1.5 text-sm"
-        >
-          {EXPIRY_CHOICES.map((choice) => (
-            <option key={choice.value} value={choice.value}>
-              {choice.label}
-            </option>
-          ))}
-        </select>
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="flex items-center gap-2">
+          <label
+            htmlFor="download-limit-select"
+            className="text-sm text-muted-foreground"
+          >
+            Download limit
+          </label>
+          <select
+            id="download-limit-select"
+            value={downloadLimit}
+            onChange={(e) => setDownloadLimit(e.target.value)}
+            disabled={isUploading}
+            className="rounded-md border border-input bg-background px-2 py-1.5 text-sm"
+          >
+            {DOWNLOAD_LIMIT_CHOICES.map((choice) => (
+              <option key={choice.value} value={choice.value}>
+                {choice.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <label
+            htmlFor="expiry-select"
+            className="text-sm text-muted-foreground"
+          >
+            Expires in
+          </label>
+          <select
+            id="expiry-select"
+            value={expiry}
+            onChange={(e) => setExpiry(e.target.value as ExpiryOption)}
+            disabled={isUploading}
+            className="rounded-md border border-input bg-background px-2 py-1.5 text-sm"
+          >
+            {EXPIRY_CHOICES.map((choice) => (
+              <option key={choice.value} value={choice.value}>
+                {choice.label}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <Button onClick={handleUpload} disabled={isUploading} className="w-full">

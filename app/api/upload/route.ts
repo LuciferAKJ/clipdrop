@@ -18,6 +18,8 @@ const EXPIRY_OPTIONS: Record<string, number> = {
   "30d": 30 * 24 * 60 * 60 * 1000,
 };
 
+const ALLOWED_DOWNLOAD_LIMITS = [1, 5, 10, 25, 50, 100];
+
 export async function POST(req: NextRequest) {
   try {
     const { userId } = await auth();
@@ -59,10 +61,23 @@ export async function POST(req: NextRequest) {
       const text = formData.get("text") as string | null;
       const password = formData.get("password") as string | null;
       const oneTimeUse = formData.get("oneTimeUse") === "true";
+      const downloadLimitRaw = formData.get("downloadLimit") as string | null;
       const expiryRaw = formData.get("expiry") as string | null;
 
       if (expiryRaw && !(expiryRaw in EXPIRY_OPTIONS)) {
         return NextResponse.json({ error: "Invalid expiry" }, { status: 400 });
+      }
+
+      let downloadLimit: number | null = null;
+      if (downloadLimitRaw !== null && downloadLimitRaw !== "") {
+        const parsed = Number(downloadLimitRaw);
+        if (!ALLOWED_DOWNLOAD_LIMITS.includes(parsed)) {
+          return NextResponse.json(
+            { error: "Invalid download limit" },
+            { status: 400 },
+          );
+        }
+        downloadLimit = parsed;
       }
 
       const expiryKey = (expiryRaw as keyof typeof EXPIRY_OPTIONS) ?? "1h";
@@ -86,6 +101,7 @@ export async function POST(req: NextRequest) {
           expiresAt,
           passwordHash,
           oneTimeUse,
+          downloadLimit,
           userId: userId ?? null,
           ipHash,
         },
@@ -119,12 +135,28 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
 
-    const { text, password, oneTimeUse, expiry } = body;
+    const { text, password, oneTimeUse, downloadLimit, expiry } = body;
 
     validateTextShare(text);
 
     if (expiry && !(expiry in EXPIRY_OPTIONS)) {
       return NextResponse.json({ error: "Invalid expiry" }, { status: 400 });
+    }
+
+    let parsedDownloadLimit: number | null = null;
+    if (
+      downloadLimit !== undefined &&
+      downloadLimit !== null &&
+      downloadLimit !== ""
+    ) {
+      const parsed = Number(downloadLimit);
+      if (!ALLOWED_DOWNLOAD_LIMITS.includes(parsed)) {
+        return NextResponse.json(
+          { error: "Invalid download limit" },
+          { status: 400 },
+        );
+      }
+      parsedDownloadLimit = parsed;
     }
 
     const expiryKey = (expiry as keyof typeof EXPIRY_OPTIONS) ?? "1h";
@@ -140,6 +172,7 @@ export async function POST(req: NextRequest) {
         expiresAt,
         passwordHash,
         oneTimeUse: !!oneTimeUse,
+        downloadLimit: parsedDownloadLimit,
         userId: userId ?? null,
         ipHash,
       },
