@@ -5,6 +5,7 @@ import { Toaster } from "sonner";
 import { ClerkProvider } from "@clerk/nextjs";
 import { DeviceRegistrar } from "@/components/DeviceRegistrar";
 import { ClipboardSyncProvider } from "@/components/providers/ClipboardSyncProvider";
+import { Header } from "@/components/Header";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -51,6 +52,7 @@ export default function RootLayout({
         <body
           className={`${geistSans.variable} ${geistMono.variable} bg-background text-foreground antialiased min-h-screen`}
         >
+          <Header />
           {children}
           <ClipboardSyncProvider />
           <DeviceRegistrar />
