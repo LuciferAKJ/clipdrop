@@ -17,7 +17,6 @@ import {
   Download,
   ExternalLink,
   File,
-  FileText,
   Trash2,
 } from "lucide-react";
 import type { ShareSummary } from "@/app/dashboard/page";

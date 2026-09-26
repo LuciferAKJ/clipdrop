@@ -7,25 +7,69 @@ cloudinary.config({
   secure: true,
 });
 
+function resolveResourceType(mimeType: string) {
+  if (mimeType.startsWith("image/")) {
+    return "image";
+  }
+
+  if (mimeType.startsWith("video/") || mimeType.startsWith("audio/")) {
+    return "video";
+  }
+
+  return "raw";
+}
+
 export async function uploadToCloudinary(
   buffer: Buffer,
   filename: string,
   mimeType: string,
 ) {
+  const resourceType = resolveResourceType(mimeType);
+
   return new Promise<{
     url: string;
     publicId: string;
   }>((resolve, reject) => {
+    const extension = filename.includes(".")
+      ? filename.slice(filename.lastIndexOf("."))
+      : "";
+
+    const baseName = filename.includes(".")
+      ? filename.slice(0, filename.lastIndexOf("."))
+      : filename;
+
+    const safeBaseName = baseName
+      .replace(/[^a-zA-Z0-9_-]/g, "_")
+      .replace(/^_+|_+$/g, "");
+
+    const uploadOptions: Record<string, unknown> = {
+      resource_type: resourceType,
+      folder: "clipdrop",
+      overwrite: false,
+    };
+
+    if (resourceType === "raw") {
+      uploadOptions.public_id = `${safeBaseName || "file"}${extension}`;
+    } else {
+      uploadOptions.public_id = safeBaseName || "file";
+    }
+
     const stream = cloudinary.uploader.upload_stream(
-      {
-        resource_type: resolveResourceType(mimeType),
-        folder: "clipdrop",
-        filename_override: filename,
-      },
+      uploadOptions,
       (error, result) => {
         if (error || !result) {
-          return reject(error);
+          console.error("Cloudinary upload error:", error);
+          return reject(error ?? new Error("Cloudinary upload failed"));
         }
+
+        console.log("CLOUDINARY UPLOAD RESULT:", {
+          resource_type: result.resource_type,
+          type: result.type,
+          public_id: result.public_id,
+          format: result.format,
+          secure_url: result.secure_url,
+          bytes: result.bytes,
+        });
 
         resolve({
           url: result.secure_url,
@@ -38,18 +82,9 @@ export async function uploadToCloudinary(
   });
 }
 
-function resolveResourceType(mimeType: string) {
-  if (mimeType.startsWith("image/")) return "image";
-
-  if (mimeType.startsWith("video/") || mimeType.startsWith("audio/")) {
-    return "video";
-  }
-
-  return "raw";
-}
-
 export async function deleteFromCloudinary(publicId: string, mimeType: string) {
   await cloudinary.uploader.destroy(publicId, {
     resource_type: resolveResourceType(mimeType),
+    type: "upload",
   });
 }

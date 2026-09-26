@@ -12,7 +12,7 @@ const securityHeaders = [
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // Next.js dev/HMR needs unsafe-eval; tighten in a follow-up once confirmed safe to drop in prod
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' https://res.cloudinary.com data: blob:",
       "font-src 'self' data:",
@@ -23,6 +23,10 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  experimental: {
+    proxyClientMaxBodySize: "20mb",
+  },
+
   async headers() {
     return [
       {
