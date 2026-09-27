@@ -16,11 +16,21 @@ export async function GET(req: NextRequest) {
     );
   }
 
+  const now = new Date();
   const expired = await prisma.share.findMany({
     where: {
-      expiresAt: {
-        lt: new Date(),
-      },
+      OR: [
+        {
+          expiresAt: {
+            lt: now,
+          },
+        },
+        {
+          consumedAt: {
+            not: null,
+          },
+        },
+      ],
     },
     include: {
       files: true,

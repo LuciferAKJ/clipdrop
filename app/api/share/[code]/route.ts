@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyPassword } from "@/lib/password";
-import { deleteFromCloudinary } from "@/lib/cloudinary";
 
-// Metadata only
+// Metadata only (GET should NOT check consumedAt)
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ code: string }> },
@@ -29,7 +28,7 @@ export async function GET(
   });
 }
 
-// Actual download
+// Actual download / consumption (POST handles limit checks & increments)
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ code: string }> },
@@ -49,6 +48,18 @@ export async function POST(
 
   if (!share) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  // Keep consumedAt check in POST where access is actually consumed
+  if (
+    share.consumedAt &&
+    share.downloadLimit !== null &&
+    share.downloadCount >= share.downloadLimit
+  ) {
+    return NextResponse.json(
+      { error: "Download limit reached" },
+      { status: 410 },
+    );
   }
 
   if (share.expiresAt < new Date()) {
@@ -85,13 +96,12 @@ export async function POST(
     updatedShare.downloadLimit !== null &&
     updatedShare.downloadCount >= updatedShare.downloadLimit
   ) {
-    for (const file of share.files) {
-      await deleteFromCloudinary(file.publicId, file.mimeType).catch(() => {});
-    }
-
-    await prisma.share.delete({
+    await prisma.share.update({
       where: {
         id: share.id,
+      },
+      data: {
+        consumedAt: new Date(),
       },
     });
   }

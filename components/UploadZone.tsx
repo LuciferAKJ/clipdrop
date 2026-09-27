@@ -13,6 +13,7 @@ import {
   type UploadHandle,
   type ExpiryOption,
 } from "@/lib/uploadService";
+import { MAX_FILE_SIZE } from "@/lib/validation";
 
 type BatchStatus = "idle" | "uploading" | "error" | "cancelled";
 
@@ -48,10 +49,23 @@ export function UploadZone() {
   const [handle, setHandle] = useState<UploadHandle | null>(null);
   const [result, setResult] = useState<string | null>(null);
 
-  const onDrop = useCallback(
-    (accepted: File[]) => setFiles((f) => [...f, ...accepted]),
-    [],
-  );
+  const onDrop = useCallback((accepted: File[]) => {
+    const validFiles: File[] = [];
+
+    for (const file of accepted) {
+      if (file.size > MAX_FILE_SIZE) {
+        toast.error(`${file.name} exceeds the 10 MB limit`);
+        continue;
+      }
+
+      validFiles.push(file);
+    }
+
+    if (validFiles.length > 0) {
+      setFiles((f) => [...f, ...validFiles]);
+    }
+  }, []);
+
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     disabled: status === "uploading",
@@ -59,11 +73,21 @@ export function UploadZone() {
 
   function handlePaste(e: React.ClipboardEvent) {
     if (status === "uploading") return;
+
     const items = e.clipboardData.items;
+
     for (const item of items) {
       if (item.type.startsWith("image/")) {
         const file = item.getAsFile();
-        if (file) setFiles((f) => [...f, file]);
+
+        if (!file) continue;
+
+        if (file.size > MAX_FILE_SIZE) {
+          toast.error(`${file.name} exceeds the 10 MB limit`);
+          continue;
+        }
+
+        setFiles((f) => [...f, file]);
       }
     }
   }
@@ -78,6 +102,13 @@ export function UploadZone() {
   }
 
   async function handleUpload() {
+    const oversizedFile = files.find((file) => file.size > MAX_FILE_SIZE);
+
+    if (oversizedFile) {
+      toast.error(`${oversizedFile.name} exceeds the 10 MB limit`);
+      return;
+    }
+
     if (!text && files.length === 0) {
       toast.error("Add text or a file first");
       return;

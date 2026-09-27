@@ -13,16 +13,17 @@ enum ClipboardContentType {
 }
 
 model Share {
-  id            String   @id @default(cuid())
-  code          String   @unique
-  textContent   String?
-  passwordHash  String?
-  oneTimeUse    Boolean  @default(false)
-  downloadLimit Int?
-  encrypted     Boolean  @default(false)
-  downloadCount Int      @default(0)
-  expiresAt     DateTime
-  createdAt     DateTime @default(now())
+  id             String       @id @default(cuid())
+  code           String       @unique
+  textContent    String?
+  passwordHash   String?
+  oneTimeUse     Boolean      @default(false)
+  downloadLimit  Int?
+  encrypted      Boolean      @default(false)
+  downloadCount  Int          @default(0)
+  consumedAt     DateTime?
+  expiresAt      DateTime
+  createdAt      DateTime     @default(now())
 
   userId String?
   ipHash String?
