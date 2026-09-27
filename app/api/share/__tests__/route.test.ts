@@ -8,7 +8,7 @@ vi.mock("@/lib/prisma", () => ({
     share: {
       findUnique: vi.fn(),
       update: vi.fn(),
-      delete: vi.fn(),      // add this
+      delete: vi.fn(), // add this
       deleteMany: vi.fn(),
     },
   },
@@ -26,7 +26,9 @@ describe("GET /api/share/[code]", () => {
 
   it("returns 404 for unknown code", async () => {
     (prisma.share.findUnique as any).mockResolvedValue(null);
-    const res = await GET(makeReq(), { params: { code: "NOPE" } });
+    const res = await GET(makeReq(), {
+      params: Promise.resolve({ code: "NOPE" }),
+    });
     expect(res.status).toBe(404);
   });
 
@@ -35,7 +37,9 @@ describe("GET /api/share/[code]", () => {
       expiresAt: new Date(Date.now() - 1000),
       passwordHash: null,
     });
-    const res = await GET(makeReq(), { params: { code: "ABC123" } });
+    const res = await GET(makeReq(), {
+      params: Promise.resolve({ code: "ABC123" }),
+    });
     expect(res.status).toBe(410);
   });
 
@@ -44,7 +48,9 @@ describe("GET /api/share/[code]", () => {
       expiresAt: new Date(Date.now() + 100000),
       passwordHash: "somehash",
     });
-    const res = await GET(makeReq(), { params: { code: "ABC123" } });
+    const res = await GET(makeReq(), {
+      params: Promise.resolve({ code: "ABC123" }),
+    });
     const json = await res.json();
     expect(json.requiresPassword).toBe(true);
   });
@@ -57,11 +63,15 @@ describe("POST /api/share/[code]", () => {
     (prisma.share.findUnique as any).mockResolvedValue({
       id: "1",
       expiresAt: new Date(Date.now() + 100000),
-      passwordHash: await (await import("@/lib/password")).hashPassword("correct"),
+      passwordHash: await (
+        await import("@/lib/password")
+      ).hashPassword("correct"),
       files: [],
       oneTimeUse: false,
     });
-    const res = await POST(makeReq({ password: "wrong" }), { params: { code: "ABC123" } });
+    const res = await POST(makeReq({ password: "wrong" }), {
+      params: Promise.resolve({ code: "ABC123" }),
+    });
     expect(res.status).toBe(401);
   });
 
@@ -76,7 +86,9 @@ describe("POST /api/share/[code]", () => {
     });
     (prisma.share.delete as any).mockResolvedValue({});
 
-    const res = await POST(makeReq({}), { params: { code: "ABC123" } });
+    const res = await POST(makeReq({}), {
+      params: Promise.resolve({ code: "ABC123" }),
+    });
     expect(prisma.share.delete).toHaveBeenCalledWith({ where: { id: "1" } });
     expect(res.status).toBe(200);
   });

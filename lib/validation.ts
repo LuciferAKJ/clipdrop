@@ -118,7 +118,7 @@ const BLOCKED_EXTENSIONS = [
 
 export const MAX_DEVICE_NAME_LENGTH = 100;
 const MAX_CLIENT_ID_LENGTH = 100;
-const MAX_TEXT_LENGTH = 10_000;
+export const MAX_TEXT_LENGTH = 10_000;
 
 const VALID_CONTENT_TYPES: ClipboardContentType[] = ["TEXT", "SHARE"];
 
