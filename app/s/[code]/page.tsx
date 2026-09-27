@@ -6,7 +6,8 @@ import {
   AlertCircle,
   ArrowDownToLine,
   Check,
-  Clock3,
+  Clock,
+  Copy,
   File,
   FileArchive,
   FileCode2,
@@ -15,7 +16,7 @@ import {
   Film,
   LockKeyhole,
   Music,
-  Package,
+  Share2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -87,7 +88,7 @@ function getFileTypeLabel(mime: string) {
   if (mime.includes("pdf")) return "PDF Document";
   if (mime.includes("word")) return "Word Document";
   if (mime.includes("spreadsheet")) return "Excel Spreadsheet";
-  if (mime.includes("presentation")) return "PowerPoint Presentation";
+  if (mime.includes("presentation")) return "Presentation";
 
   if (
     mime.includes("zip") ||
@@ -139,6 +140,7 @@ export default function ReceivePage() {
   const [loading, setLoading] = useState(true);
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [copiedCode, setCopiedCode] = useState(false);
 
   const fetchContent = useCallback(
     async (pw?: string) => {
@@ -158,7 +160,7 @@ export default function ReceivePage() {
         const json: ShareData & ShareApiError = await res.json();
 
         if (!res.ok) {
-          throw new Error(json.error || "Failed to retrieve");
+          throw new Error(json.error || "Failed to retrieve share");
         }
 
         setData(json);
@@ -180,7 +182,7 @@ export default function ReceivePage() {
         const meta: ShareMeta = await res.json();
 
         if (!res.ok) {
-          throw new Error(meta.error || "Not found");
+          throw new Error(meta.error || "Share not found or expired");
         }
 
         if (cancelled) return;
@@ -193,7 +195,9 @@ export default function ReceivePage() {
         }
       } catch (e) {
         if (!cancelled) {
-          setError(e instanceof Error ? e.message : "Failed to load");
+          setError(
+            e instanceof Error ? e.message : "Share not found or expired",
+          );
           setLoading(false);
         }
       }
@@ -210,18 +214,27 @@ export default function ReceivePage() {
     try {
       await fetchContent(password);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed");
+      toast.error(e instanceof Error ? e.message : "Invalid password");
     }
+  }
+
+  function handleCopyCode() {
+    navigator.clipboard.writeText(code.toUpperCase());
+    toast.success("Share code copied");
+    setCopiedCode(true);
+    setTimeout(() => setCopiedCode(false), 2000);
   }
 
   if (loading) {
     return (
-      <main className="mx-auto max-w-2xl px-6 py-12 sm:py-16">
-        <div className="space-y-5">
-          <Skeleton className="mx-auto h-8 w-40" />
-          <Skeleton className="mx-auto h-5 w-64" />
-          <Skeleton className="h-24 w-full rounded-2xl" />
-          <Skeleton className="h-24 w-full rounded-2xl" />
+      <main className="mx-auto max-w-2xl px-4 sm:px-6 py-12 sm:py-16">
+        <div className="space-y-4">
+          <Skeleton className="mx-auto h-8 w-44 rounded-xl" />
+          <Skeleton className="mx-auto h-4 w-64 rounded-lg" />
+          <div className="pt-4 space-y-3">
+            <Skeleton className="h-28 w-full rounded-2xl" />
+            <Skeleton className="h-20 w-full rounded-2xl" />
+          </div>
         </div>
       </main>
     );
@@ -229,23 +242,38 @@ export default function ReceivePage() {
 
   if (error) {
     return (
-      <main className="mx-auto flex min-h-[60vh] max-w-lg items-center justify-center px-6 py-12">
-        <div className="w-full rounded-2xl border bg-card p-8 text-center shadow-sm">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
-            <AlertCircle className="h-6 w-6 text-destructive" />
+      <main className="mx-auto flex min-h-[60vh] max-w-md items-center justify-center px-4 py-12">
+        <div className="w-full rounded-2xl border border-border bg-card p-6 sm:p-8 text-center shadow-xs">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-destructive/15 text-destructive">
+            <AlertCircle className="h-6 w-6" />
           </div>
 
-          <h1 className="mt-5 text-xl font-semibold">Unable to open share</h1>
+          <h1 className="mt-4 font-heading text-lg font-semibold text-foreground">
+            Share not found
+          </h1>
 
-          <p className="mt-2 text-sm text-muted-foreground">{error}</p>
+          <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">
+            {error ||
+              "This share is no longer available or has reached its download limit."}
+          </p>
 
-          <Button
-            variant="outline"
-            className="mt-6"
-            onClick={() => window.location.reload()}
-          >
-            Try Again
-          </Button>
+          <div className="mt-6 flex flex-col sm:flex-row gap-2.5 justify-center">
+            <Button
+              variant="outline"
+              size="lg"
+              className="h-10 text-xs w-full sm:w-auto"
+              onClick={() => window.location.reload()}
+            >
+              Try Again
+            </Button>
+            <Button
+              size="lg"
+              className="h-10 text-xs w-full sm:w-auto"
+              onClick={() => (window.location.href = "/")}
+            >
+              Back to Home
+            </Button>
+          </div>
         </div>
       </main>
     );
@@ -253,25 +281,27 @@ export default function ReceivePage() {
 
   if (needsPassword) {
     return (
-      <main className="mx-auto flex min-h-[65vh] max-w-md items-center justify-center px-6 py-12">
-        <div className="w-full rounded-2xl border bg-card p-7 text-center shadow-sm sm:p-9">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
-            <LockKeyhole className="h-6 w-6 text-primary" />
+      <main className="mx-auto flex min-h-[65vh] max-w-md items-center justify-center px-4 py-12">
+        <div className="w-full rounded-2xl border border-border bg-card p-6 sm:p-8 text-center shadow-xs">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary text-primary">
+            <LockKeyhole className="h-6 w-6" />
           </div>
 
-          <div className="mt-5 space-y-2">
-            <h1 className="text-2xl font-bold tracking-tight">
-              Password protected
+          <div className="mt-4 space-y-1">
+            <h1 className="font-heading text-xl font-bold tracking-tight text-foreground">
+              Password Required
             </h1>
 
-            <p className="text-sm leading-6 text-muted-foreground">
-              This share is protected. Enter the password to access the shared
-              content.
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              This share is protected. Enter the password to access the content.
             </p>
           </div>
 
           <div className="mt-6 space-y-3 text-left">
-            <label htmlFor="share-password" className="text-sm font-medium">
+            <label
+              htmlFor="share-password"
+              className="text-xs font-medium text-muted-foreground"
+            >
               Password
             </label>
 
@@ -282,21 +312,22 @@ export default function ReceivePage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleUnlock()}
-              autoComplete="off"
+              autoComplete="current-password"
               className="h-11"
             />
 
             <Button
               onClick={handleUnlock}
               disabled={checking || !password}
-              className="h-11 w-full"
+              size="lg"
+              className="h-11 w-full text-sm font-semibold tracking-wide"
             >
               {checking ? "Checking..." : "Unlock Share"}
             </Button>
           </div>
 
-          <p className="mt-5 text-xs text-muted-foreground">
-            Only someone with the correct password can access this share.
+          <p className="mt-5 text-[11px] text-muted-foreground">
+            Password was set by the sender at upload time.
           </p>
         </div>
       </main>
@@ -308,58 +339,71 @@ export default function ReceivePage() {
   const hasFiles = files.length > 0;
 
   return (
-    <main className="mx-auto max-w-2xl px-6 py-10 sm:py-14">
-      {/* Header */}
-      <div className="text-center">
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10">
-          <Package className="h-6 w-6 text-primary" />
-        </div>
-
-        <p className="mt-5 text-sm font-medium text-primary">ClipDrop Share</p>
-
-        <h1 className="mt-1 text-3xl font-bold tracking-tight sm:text-4xl">
-          Shared content
-        </h1>
-
-        <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
-          Someone shared files or text with you.
-        </p>
-
-        <div className="mt-4 inline-flex items-center gap-2 rounded-full border bg-card px-3 py-1.5">
-          <span className="font-mono text-xs font-semibold tracking-widest">
+    <main className="mx-auto max-w-2xl px-4 sm:px-6 py-8 sm:py-14 space-y-8">
+      {/* Header Info */}
+      <div className="text-center space-y-3">
+        <div className="inline-flex items-center gap-2 rounded-full border border-border bg-secondary/50 px-3.5 py-1 text-xs">
+          <span className="font-mono font-bold tracking-wider text-foreground">
             {code.toUpperCase()}
           </span>
-          <Check className="h-3.5 w-3.5 text-emerald-500" />
+          <button
+            type="button"
+            onClick={handleCopyCode}
+            className="text-muted-foreground hover:text-foreground transition-colors ml-1"
+            title="Copy share code"
+          >
+            {copiedCode ? (
+              <Check className="h-3 w-3 text-emerald-400" />
+            ) : (
+              <Copy className="h-3 w-3" />
+            )}
+          </button>
         </div>
+
+        <h1 className="font-heading text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
+          Shared Content
+        </h1>
+
+        <p className="text-xs text-muted-foreground">
+          {hasFiles && hasText
+            ? `${files.length} file${files.length !== 1 ? "s" : ""} and 1 text note`
+            : hasFiles
+              ? `${files.length} shared file${files.length !== 1 ? "s" : ""}`
+              : "Shared note / snippet"}
+        </p>
       </div>
 
-      {/* Shared text */}
+      {/* Shared Text Snippet */}
       {hasText && (
-        <section className="mt-8">
-          <div className="mb-3 flex items-center gap-2">
-            <FileText className="h-4 w-4 text-muted-foreground" />
-            <h2 className="text-sm font-semibold">Shared text</h2>
+        <section className="space-y-2.5">
+          <div className="flex items-center gap-2">
+            <FileText className="h-4 w-4 text-primary" />
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Shared text
+            </h2>
           </div>
 
           <LazyTextViewer text={data.textContent!} />
         </section>
       )}
 
-      {/* Files */}
+      {/* Shared Files List */}
       {hasFiles && (
-        <section className={hasText ? "mt-8" : "mt-8"}>
-          <div className="mb-3 flex items-center justify-between">
+        <section className="space-y-3">
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <File className="h-4 w-4 text-muted-foreground" />
-              <h2 className="text-sm font-semibold">Shared files</h2>
+              <Share2 className="h-4 w-4 text-primary" />
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Shared files
+              </h2>
             </div>
 
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs font-mono text-muted-foreground">
               {files.length} file{files.length !== 1 ? "s" : ""}
             </span>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             {files.map((f) => {
               const Icon = getFileIcon(f.mimeType);
 
@@ -367,25 +411,28 @@ export default function ReceivePage() {
                 <a
                   key={f.id}
                   href={f.url}
+                  download={f.originalName}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="group flex items-center gap-4 rounded-2xl border bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md"
+                  className="group flex items-center justify-between gap-3.5 rounded-2xl border border-border bg-card p-3.5 sm:p-4 shadow-xs transition-all hover:border-primary/40 hover:bg-secondary/40 active:scale-[0.99]"
                 >
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10">
-                    <Icon className="h-5 w-5 text-primary" />
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-secondary text-primary transition-transform group-hover:scale-105">
+                      <Icon className="h-5 w-5" />
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
+                        {f.originalName}
+                      </p>
+                      <p className="mt-0.5 text-xs text-muted-foreground font-mono">
+                        {getFileTypeLabel(f.mimeType)} ·{" "}
+                        {formatSize(f.sizeBytes)}
+                      </p>
+                    </div>
                   </div>
 
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium">{f.originalName}</p>
-
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {getFileTypeLabel(f.mimeType)}
-                      {" · "}
-                      {formatSize(f.sizeBytes)}
-                    </p>
-                  </div>
-
-                  <div className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium transition-colors group-hover:bg-accent">
+                  <div className="flex h-9 shrink-0 items-center gap-1.5 rounded-xl border border-border/80 bg-secondary/50 px-3 text-xs font-semibold text-foreground transition-all group-hover:bg-primary group-hover:text-primary-foreground group-hover:border-primary">
                     <ArrowDownToLine className="h-4 w-4" />
                     <span className="hidden sm:inline">Download</span>
                   </div>
@@ -396,26 +443,24 @@ export default function ReceivePage() {
         </section>
       )}
 
-      {/* Empty state */}
+      {/* Empty State */}
       {!hasText && !hasFiles && (
-        <div className="mt-10 rounded-2xl border border-dashed bg-card/50 p-10 text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-            <File className="h-5 w-5 text-muted-foreground" />
-          </div>
-
-          <h2 className="mt-4 font-semibold">Nothing was shared</h2>
-
-          <p className="mt-1 text-sm text-muted-foreground">
-            This link doesn&apos;t contain any files or text.
+        <div className="rounded-2xl border border-dashed border-border bg-card/40 p-10 text-center space-y-2">
+          <File className="mx-auto h-8 w-8 text-muted-foreground" />
+          <h2 className="font-heading text-sm font-semibold text-foreground">
+            Nothing was shared
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            This link does not contain any files or text.
           </p>
         </div>
       )}
 
-      {/* Footer hint */}
+      {/* Expiry Footnote */}
       {(hasFiles || hasText) && (
-        <div className="mt-8 flex items-center justify-center gap-2 text-xs text-muted-foreground">
-          <Clock3 className="h-3.5 w-3.5" />
-          Shared content expires automatically.
+        <div className="flex items-center justify-center gap-1.5 pt-4 text-center text-xs text-muted-foreground">
+          <Clock className="h-3.5 w-3.5" />
+          <span>Shared content expires automatically</span>
         </div>
       )}
     </main>

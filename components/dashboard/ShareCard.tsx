@@ -12,11 +12,11 @@ import {
 } from "@/components/ui/dialog";
 import {
   Check,
-  Clock3,
+  Clock,
   Copy,
   Download,
   ExternalLink,
-  File,
+  FileText,
   Trash2,
 } from "lucide-react";
 import type { ShareSummary } from "@/app/dashboard/page";
@@ -24,18 +24,18 @@ import type { ShareSummary } from "@/app/dashboard/page";
 function Badge({ expired }: { expired: boolean }) {
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
+      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium ${
         expired
           ? "bg-destructive/15 text-destructive"
-          : "bg-emerald-500/15 text-emerald-500"
+          : "bg-emerald-500/15 text-emerald-400"
       }`}
     >
       <span
         className={`h-1.5 w-1.5 rounded-full ${
-          expired ? "bg-destructive" : "bg-emerald-500"
+          expired ? "bg-destructive" : "bg-emerald-400"
         }`}
       />
-      {expired ? "Expired" : "Active"}
+      <span>{expired ? "Expired" : "Active"}</span>
     </span>
   );
 }
@@ -80,10 +80,8 @@ export function ShareCard({
     if (typeof window === "undefined") return;
 
     navigator.clipboard.writeText(`${window.location.origin}${shareHref}`);
-
     toast.success("Link copied");
     setCopied(true);
-
     setTimeout(() => setCopied(false), 2000);
   }
 
@@ -127,109 +125,136 @@ export function ShareCard({
       share.fileCount > 0
         ? `${share.fileCount} file${share.fileCount !== 1 ? "s" : ""}`
         : null,
-      share.hasText ? "Text" : null,
+      share.hasText ? "Text note" : null,
     ]
       .filter(Boolean)
       .join(" · ") || "Empty";
 
+  const percentUsed =
+    share.downloadLimit && share.downloadLimit > 0
+      ? Math.min(
+          100,
+          Math.round((share.downloadCount / share.downloadLimit) * 100),
+        )
+      : null;
+
   return (
-    <div className="group rounded-2xl border bg-card p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
-      {/* Top */}
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Share code
-          </p>
+    <div className="group rounded-2xl border border-border bg-card p-5 shadow-xs transition-all hover:border-primary/40 hover:shadow-sm flex flex-col justify-between">
+      <div>
+        {/* Top Header */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Code
+            </span>
+            <p className="mt-0.5 truncate font-mono text-xl font-bold tracking-wider text-foreground">
+              {share.code}
+            </p>
+          </div>
 
-          <p className="mt-1 truncate font-mono text-xl font-bold tracking-wider">
-            {share.code}
-          </p>
+          <Badge expired={share.isExpired} />
         </div>
 
-        <Badge expired={share.isExpired} />
-      </div>
+        {/* Metadata Details */}
+        <div className="mt-5 space-y-2.5">
+          <div className="flex items-center justify-between text-xs">
+            <span className="flex items-center gap-1.5 text-muted-foreground">
+              <FileText className="h-3.5 w-3.5" />
+              <span>Content</span>
+            </span>
+            <span className="font-medium text-foreground truncate max-w-[60%] text-right">
+              {contentDisplay}
+            </span>
+          </div>
 
-      {/* Metadata */}
-      <div className="mt-5 space-y-3">
-        <div className="flex items-center justify-between text-sm">
-          <span className="flex items-center gap-2 text-muted-foreground">
-            <File className="h-4 w-4" />
-            Content
-          </span>
+          <div className="flex items-center justify-between text-xs">
+            <span className="flex items-center gap-1.5 text-muted-foreground">
+              <Download className="h-3.5 w-3.5" />
+              <span>Downloads</span>
+            </span>
+            <span className="font-mono font-medium text-foreground">
+              {downloadDisplay}
+            </span>
+          </div>
 
-          <span className="max-w-[55%] truncate text-right font-medium">
-            {contentDisplay}
-          </span>
-        </div>
-
-        <div className="flex items-center justify-between text-sm">
-          <span className="flex items-center gap-2 text-muted-foreground">
-            <Download className="h-4 w-4" />
-            Downloads
-          </span>
-
-          <span className="font-medium">{downloadDisplay}</span>
-        </div>
-
-        <div className="flex items-center justify-between text-sm">
-          <span className="flex items-center gap-2 text-muted-foreground">
-            <Clock3 className="h-4 w-4" />
-            Expires
-          </span>
-
-          <span className="font-medium">{relativeTime(share.expiresAt)}</span>
-        </div>
-      </div>
-
-      {/* Actions */}
-      <div className="mt-5 grid grid-cols-2 gap-2">
-        <Button size="sm" variant="outline" onClick={copyLink} className="h-9">
-          {copied ? (
-            <Check className="mr-1.5 h-4 w-4" />
-          ) : (
-            <Copy className="mr-1.5 h-4 w-4" />
+          {percentUsed !== null && (
+            <div className="h-1.5 w-full rounded-full bg-secondary overflow-hidden">
+              <div
+                className="h-full rounded-full bg-primary transition-all duration-300"
+                style={{ width: `${percentUsed}%` }}
+              />
+            </div>
           )}
 
-          {copied ? "Copied" : "Copy Link"}
-        </Button>
-
-        <a
-          href={shareHref}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-input bg-background px-3 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
-        >
-          <ExternalLink className="h-4 w-4" />
-          Open
-        </a>
+          <div className="flex items-center justify-between text-xs">
+            <span className="flex items-center gap-1.5 text-muted-foreground">
+              <Clock className="h-3.5 w-3.5" />
+              <span>Expires</span>
+            </span>
+            <span className="font-medium text-foreground">
+              {relativeTime(share.expiresAt)}
+            </span>
+          </div>
+        </div>
       </div>
 
-      {/* Delete */}
-      <Button
-        size="sm"
-        variant="ghost"
-        onClick={() => setOpen(true)}
-        className="mt-2 h-9 w-full text-muted-foreground hover:text-destructive"
-      >
-        <Trash2 className="mr-1.5 h-4 w-4" />
-        Delete Share
-      </Button>
+      {/* Action Row */}
+      <div className="mt-6 pt-4 border-t border-border/60 space-y-2">
+        <div className="grid grid-cols-2 gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={copyLink}
+            className="h-9 text-xs"
+          >
+            {copied ? (
+              <Check className="mr-1.5 h-3.5 w-3.5 text-emerald-400" />
+            ) : (
+              <Copy className="mr-1.5 h-3.5 w-3.5" />
+            )}
+            <span>{copied ? "Copied" : "Copy Link"}</span>
+          </Button>
 
-      {/* Confirmation dialog */}
+          <a
+            href={shareHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-border bg-card px-3 text-xs font-semibold text-foreground transition-colors hover:bg-secondary active:scale-[0.98]"
+          >
+            <ExternalLink className="h-3.5 w-3.5" />
+            <span>Open</span>
+          </a>
+        </div>
+
+        {/* Delete Trigger */}
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => setOpen(true)}
+          className="h-8 w-full text-xs text-muted-foreground hover:bg-destructive/15 hover:text-destructive transition-colors"
+        >
+          <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+          <span>Delete Share</span>
+        </Button>
+      </div>
+
+      {/* Confirmation Dialog */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Delete this share?</DialogTitle>
           </DialogHeader>
 
-          <p className="text-sm text-muted-foreground">
-            This permanently deletes code <strong>{share.code}</strong> and any
-            attached files. This cannot be undone.
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            This permanently removes share code{" "}
+            <strong className="font-mono text-foreground">{share.code}</strong>{" "}
+            and any attached files. This action cannot be undone.
           </p>
 
           <DialogFooter>
             <Button
               variant="ghost"
+              size="sm"
               onClick={() => setOpen(false)}
               disabled={deleting}
             >
@@ -238,6 +263,7 @@ export function ShareCard({
 
             <Button
               variant="destructive"
+              size="sm"
               onClick={handleDelete}
               disabled={deleting}
             >

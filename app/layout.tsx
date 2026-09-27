@@ -6,6 +6,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { DeviceRegistrar } from "@/components/DeviceRegistrar";
 import { ClipboardSyncProvider } from "@/components/providers/ClipboardSyncProvider";
 import { Header } from "@/components/Header";
+import { Footer } from "@/components/Footer";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -50,10 +51,11 @@ export default function RootLayout({
     <ClerkProvider>
       <html lang="en" className="dark">
         <body
-          className={`${geistSans.variable} ${geistMono.variable} bg-background text-foreground antialiased min-h-screen`}
+          className={`${geistSans.variable} ${geistMono.variable} bg-background text-foreground antialiased min-h-screen flex flex-col`}
         >
           <Header />
-          {children}
+          <div className="flex-1">{children}</div>
+          <Footer />
           <ClipboardSyncProvider />
           <DeviceRegistrar />
           <Toaster richColors position="top-center" />

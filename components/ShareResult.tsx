@@ -19,14 +19,21 @@ export function ShareResult({
   useEffect(() => {
     if (typeof window === "undefined" || !canvasRef.current) return;
     const url = `${window.location.origin}/s/${code}`;
-    QRCode.toCanvas(canvasRef.current, url, { width: 180, margin: 1 });
+    QRCode.toCanvas(canvasRef.current, url, {
+      width: 170,
+      margin: 1,
+      color: {
+        dark: "#0f172a",
+        light: "#ffffff",
+      },
+    });
   }, [code]);
 
   const handleCopy = useCallback(() => {
     if (typeof window === "undefined") return;
     const url = `${window.location.origin}/s/${code}`;
     navigator.clipboard.writeText(url);
-    toast.success("Link copied");
+    toast.success("Link copied to clipboard");
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 2000);
   }, [code]);
@@ -34,7 +41,7 @@ export function ShareResult({
   const handleCopyCode = useCallback(() => {
     if (typeof window === "undefined") return;
     navigator.clipboard.writeText(code);
-    toast.success("Code copied");
+    toast.success("Share code copied");
     setCopiedCode(true);
     setTimeout(() => setCopiedCode(false), 2000);
   }, [code]);
@@ -42,75 +49,88 @@ export function ShareResult({
   const shareHref = `/s/${code}`;
 
   return (
-    <div className="rounded-2xl border bg-card shadow-sm p-6 sm:p-8 space-y-6 text-center">
-      {/* Success confirmation */}
-      <div className="space-y-1.5">
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/15">
-          <Check className="h-6 w-6 text-emerald-500" />
+    <div className="rounded-2xl border border-border bg-card p-6 sm:p-8 shadow-xs space-y-6 text-center">
+      {/* Confirmation header */}
+      <div className="space-y-2">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-400">
+          <Check className="h-6 w-6 stroke-[2.5]" />
         </div>
-        <p className="text-sm font-medium text-muted-foreground">
-          Your share is ready
-        </p>
+        <div>
+          <h2 className="font-heading text-lg font-bold tracking-tight text-foreground">
+            Share Ready
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            Anyone with the code or link can access this share
+          </p>
+        </div>
       </div>
 
-      {/* Share code */}
-      <div className="space-y-2">
-        <p className="text-3xl sm:text-4xl font-mono font-bold tracking-[0.2em] break-all">
+      {/* Share Code Presentation */}
+      <div className="rounded-xl border border-border/80 bg-secondary/40 p-4 space-y-2">
+        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          Share Code
+        </p>
+        <p className="text-3xl sm:text-4xl font-mono font-bold tracking-[0.25em] text-foreground break-all select-all">
           {code}
         </p>
         <button
+          type="button"
           onClick={handleCopyCode}
-          className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+          className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground active:scale-95"
         >
           {copiedCode ? (
-            <Check className="h-3.5 w-3.5" />
+            <Check className="h-3.5 w-3.5 text-emerald-400" />
           ) : (
             <Copy className="h-3.5 w-3.5" />
           )}
-          {copiedCode ? "Copied" : "Copy code"}
+          <span>{copiedCode ? "Code copied" : "Copy code"}</span>
         </button>
       </div>
 
-      {/* QR section */}
-      <div className="flex justify-center">
-        <div className="rounded-xl border bg-white p-3 shadow-sm">
-          <canvas ref={canvasRef} className="mx-auto rounded-lg" />
+      {/* QR Code Container */}
+      <div className="space-y-2">
+        <div className="flex justify-center">
+          <div className="rounded-xl border border-white/20 bg-white p-2.5 shadow-sm">
+            <canvas ref={canvasRef} className="mx-auto rounded-lg" />
+          </div>
         </div>
+        <p className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
+          <QrCode className="h-3.5 w-3.5" />
+          <span>Scan with another device to open instantly</span>
+        </p>
       </div>
-      <p className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
-        <QrCode className="h-3.5 w-3.5" />
-        Scan to open on another device
-      </p>
 
       {/* Actions */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2">
         <Button
           variant="outline"
-          className="h-10 transition-transform hover:scale-[1.02] active:scale-[0.98]"
+          size="lg"
+          className="h-11 min-h-[44px] w-full"
           onClick={handleCopy}
         >
           {copiedLink ? (
-            <Check className="h-4 w-4 mr-1.5" />
+            <Check className="h-4 w-4 mr-2 text-emerald-400" />
           ) : (
-            <Copy className="h-4 w-4 mr-1.5" />
+            <Copy className="h-4 w-4 mr-2" />
           )}
-          {copiedLink ? "Copied" : "Copy Link"}
+          <span>{copiedLink ? "Link Copied" : "Copy Link"}</span>
         </Button>
 
         <a
           href={shareHref}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex h-10 items-center justify-center gap-1.5 rounded-md border border-input bg-background px-3 text-sm font-medium transition-all hover:bg-accent hover:text-accent-foreground hover:scale-[1.02] active:scale-[0.98]"
+          className="inline-flex h-11 min-h-[44px] items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-semibold text-foreground transition-all hover:bg-secondary active:scale-[0.98]"
         >
           <ExternalLink className="h-4 w-4" />
-          Open Share
+          <span>Open Share</span>
         </a>
       </div>
 
       <Button
         variant="ghost"
-        className="w-full h-10 text-muted-foreground hover:text-foreground"
+        size="lg"
+        className="w-full h-11 min-h-[44px] text-xs text-muted-foreground hover:text-foreground"
         onClick={onReset}
       >
         Create Another Share

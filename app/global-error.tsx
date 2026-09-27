@@ -16,18 +16,26 @@ export default function GlobalError({
 
   return (
     <html lang="en" className="dark">
-      <body>
+      <body className="bg-background text-foreground antialiased min-h-screen flex items-center justify-center p-4">
         <main
-          className="max-w-md mx-auto px-4 py-24 text-center space-y-4"
+          className="max-w-md w-full rounded-2xl border border-border bg-card p-6 sm:p-8 text-center space-y-4 shadow-xs"
           role="alert"
         >
-          <h1 className="text-xl font-semibold">Application error</h1>
-          <p className="text-muted-foreground text-sm">
-            Please refresh the page.
+          <h1 className="font-heading text-lg font-bold text-foreground">
+            Application error
+          </h1>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            An unexpected error occurred in the application root. Please reload
+            the page to continue.
           </p>
-          <button onClick={reset} className="underline text-sm">
-            Try again
-          </button>
+          <div className="pt-2">
+            <button
+              onClick={reset}
+              className="inline-flex h-10 items-center justify-center rounded-xl bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-xs shadow-primary/20 transition-all hover:bg-primary/90"
+            >
+              Try again
+            </button>
+          </div>
         </main>
       </body>
     </html>

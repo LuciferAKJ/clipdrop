@@ -11,35 +11,48 @@ export function UploadProgress({
 }) {
   const label =
     status === "done"
-      ? "Complete"
+      ? "Upload Complete"
       : status === "error"
-        ? "Failed"
+        ? "Upload Failed"
         : status === "cancelled"
-          ? "Cancelled"
-          : `${percent}%`;
+          ? "Upload Cancelled"
+          : `Uploading (${percent}%)`;
 
   return (
-    <div className="space-y-1.5" role="status" aria-live="polite">
-      <div className="flex items-center justify-between text-xs text-muted-foreground">
-        <span>{label}</span>
+    <div
+      className="space-y-2 rounded-xl border border-border/80 bg-secondary/40 p-3"
+      role="status"
+      aria-live="polite"
+    >
+      <div className="flex items-center justify-between text-xs font-medium">
+        <span
+          className={
+            status === "error" ? "text-destructive" : "text-foreground"
+          }
+        >
+          {label}
+        </span>
         {status === "uploading" && onCancel && (
           <button
+            type="button"
             onClick={onCancel}
-            className="hover:text-destructive transition-colors"
+            className="text-xs text-muted-foreground hover:text-destructive transition-colors px-2 py-1 rounded"
           >
             Cancel
           </button>
         )}
       </div>
 
-      <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+      <div className="h-2 w-full rounded-full bg-secondary overflow-hidden">
         <div
-          className={`h-full transition-all duration-200 ${
+          className={`h-full transition-all duration-200 rounded-full ${
             status === "error" || status === "cancelled"
               ? "bg-destructive"
               : "bg-primary"
           }`}
-          style={{ width: `${status === "done" ? 100 : percent}%` }}
+          style={{
+            width: `${status === "done" ? 100 : Math.max(percent, 4)}%`,
+          }}
         />
       </div>
     </div>

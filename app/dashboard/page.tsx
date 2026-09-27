@@ -2,7 +2,7 @@ import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { DashboardList } from "@/components/dashboard/DashboardList";
 import Link from "next/link";
-import { Activity, Clock3, Download, Files, Plus } from "lucide-react";
+import { Laptop, Plus } from "lucide-react";
 
 export interface ShareSummary {
   id: string;
@@ -39,102 +39,43 @@ export default async function DashboardPage() {
     isExpired: s.expiresAt < now,
   }));
 
-  const totalShares = summaries.length;
-  const activeShares = summaries.filter((share) => !share.isExpired).length;
-  const expiredShares = summaries.filter((share) => share.isExpired).length;
-  const totalDownloads = summaries.reduce(
-    (total, share) => total + share.downloadCount,
-    0,
-  );
-
   return (
-    <main className="mx-auto max-w-6xl px-6 py-10 sm:py-14">
-      {/* Header */}
-      <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+    <main className="mx-auto max-w-6xl px-4 sm:px-6 py-8 sm:py-14 space-y-8">
+      {/* Workspace Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border/80 pb-6">
         <div>
-          <p className="mb-2 text-sm font-medium text-primary">
-            Your workspace
-          </p>
-
-          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
+          <span className="text-xs font-semibold uppercase tracking-wider text-primary">
+            Workspace
+          </span>
+          <h1 className="mt-1 font-heading text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
             My Uploads
           </h1>
-
-          <p className="mt-2 max-w-xl text-muted-foreground">
-            Manage your shared files and text from one place.
+          <p className="mt-1 text-xs text-muted-foreground">
+            Monitor, copy, and manage your active and expired shares.
           </p>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2.5">
           <Link
             href="/dashboard/devices"
-            className="inline-flex h-10 items-center justify-center rounded-lg border border-input bg-background px-4 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
+            className="inline-flex h-10 min-h-[40px] items-center justify-center gap-2 rounded-xl border border-border bg-card px-3.5 text-xs font-semibold text-foreground transition-colors hover:bg-secondary active:scale-[0.98]"
           >
-            Devices
+            <Laptop className="h-4 w-4 text-muted-foreground" />
+            <span>Devices</span>
           </Link>
 
           <Link
             href="/"
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-all hover:opacity-90"
+            className="inline-flex h-10 min-h-[40px] items-center justify-center gap-2 rounded-xl bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-xs shadow-primary/20 transition-all hover:bg-primary/90 active:scale-[0.98]"
           >
             <Plus className="h-4 w-4" />
-            New Share
+            <span>New Share</span>
           </Link>
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-xl border bg-card p-5">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">Total shares</p>
-            <Files className="h-4 w-4 text-muted-foreground" />
-          </div>
-
-          <p className="mt-3 text-2xl font-bold">{totalShares}</p>
-        </div>
-
-        <div className="rounded-xl border bg-card p-5">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">Active</p>
-            <Activity className="h-4 w-4 text-emerald-500" />
-          </div>
-
-          <p className="mt-3 text-2xl font-bold">{activeShares}</p>
-        </div>
-
-        <div className="rounded-xl border bg-card p-5">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">Expired</p>
-            <Clock3 className="h-4 w-4 text-muted-foreground" />
-          </div>
-
-          <p className="mt-3 text-2xl font-bold">{expiredShares}</p>
-        </div>
-
-        <div className="rounded-xl border bg-card p-5">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">Downloads</p>
-            <Download className="h-4 w-4 text-muted-foreground" />
-          </div>
-
-          <p className="mt-3 text-2xl font-bold">{totalDownloads}</p>
-        </div>
-      </div>
-
-      {/* Shares */}
-      <div className="mt-10">
-        <div className="mb-5 flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-semibold">Your shares</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Your most recent shares appear first.
-            </p>
-          </div>
-        </div>
-
-        <DashboardList initialShares={summaries} />
-      </div>
+      {/* Dynamic List with single source of truth KPI cards */}
+      <DashboardList initialShares={summaries} />
     </main>
   );
 }

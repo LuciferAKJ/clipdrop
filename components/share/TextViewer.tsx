@@ -6,8 +6,15 @@ import type { Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkBreaks from "remark-breaks";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
-import { SyntaxHighlighter, SUPPORTED_LANGUAGES } from "@/lib/syntaxHighlighterLanguages";
-import { detectContentType, guessLanguage, type ViewMode } from "@/lib/textDetection";
+import {
+  SyntaxHighlighter,
+  SUPPORTED_LANGUAGES,
+} from "@/lib/syntaxHighlighterLanguages";
+import {
+  detectContentType,
+  guessLanguage,
+  type ViewMode,
+} from "@/lib/textDetection";
 
 const MODES: { value: ViewMode; label: string }[] = [
   { value: "plain", label: "Plain Text" },
@@ -15,19 +22,19 @@ const MODES: { value: ViewMode; label: string }[] = [
   { value: "code", label: "Code" },
 ];
 
-// Fenced code blocks inside markdown render through the same Prism instance
-// used in Code mode. Falls back to a plain <code> block if the language
-// isn't in our registered set (avoids Prism warnings / unstyled output).
 const markdownComponents: Components = {
   code({ className, children, ...props }) {
     const match = /language-(\w+)/.exec(className || "");
     const lang = match?.[1];
     const codeText = String(children).replace(/\n$/, "");
 
-    const isBlock = Boolean(match); // fenced blocks carry a language-xxx className; inline code doesn't
+    const isBlock = Boolean(match);
     if (!isBlock) {
       return (
-        <code className="rounded bg-muted px-1.5 py-0.5 text-sm font-mono" {...props}>
+        <code
+          className="rounded-md bg-secondary/80 px-1.5 py-0.5 text-xs font-mono text-primary"
+          {...props}
+        >
           {children}
         </code>
       );
@@ -38,7 +45,12 @@ const markdownComponents: Components = {
         <SyntaxHighlighter
           language={lang}
           style={oneDark}
-          customStyle={{ margin: "0.5rem 0", borderRadius: "0.5rem", fontSize: "0.8125rem" }}
+          customStyle={{
+            margin: "0.5rem 0",
+            borderRadius: "0.75rem",
+            fontSize: "0.8125rem",
+            padding: "1rem",
+          }}
           wrapLongLines
         >
           {codeText}
@@ -46,9 +58,8 @@ const markdownComponents: Components = {
       );
     }
 
-    // Unsupported or missing language — graceful plain fallback, no crash.
     return (
-      <pre className="rounded-lg bg-muted p-3 overflow-x-auto text-sm font-mono">
+      <pre className="rounded-xl border border-border/80 bg-secondary/40 p-4 overflow-x-auto text-xs font-mono">
         <code {...props}>{codeText}</code>
       </pre>
     );
@@ -68,17 +79,17 @@ export function TextViewer({ text }: { text: string }) {
   }
 
   return (
-    <div className="rounded-lg border overflow-hidden">
-      <div className="flex items-center justify-between border-b px-3 py-2 bg-muted/40">
+    <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-xs">
+      <div className="flex items-center justify-between border-b border-border/80 px-3.5 py-2.5 bg-secondary/30">
         <div className="flex items-center gap-2">
-          <div className="flex gap-1">
+          <div className="flex gap-1 bg-secondary/60 p-0.5 rounded-lg">
             {MODES.map((m) => (
               <button
                 key={m.value}
                 onClick={() => setMode(m.value)}
-                className={`text-xs px-2.5 py-1 rounded-md transition-colors ${
+                className={`text-xs px-2.5 py-1 rounded-md transition-all font-medium ${
                   mode === m.value
-                    ? "bg-background border font-medium"
+                    ? "bg-card text-foreground shadow-xs"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
@@ -87,27 +98,38 @@ export function TextViewer({ text }: { text: string }) {
             ))}
           </div>
           {mode === detected && (
-            <span className="text-xs text-muted-foreground hidden sm:inline">Auto-detected</span>
+            <span className="text-[11px] text-muted-foreground hidden sm:inline">
+              Auto-detected
+            </span>
           )}
         </div>
 
         <button
           onClick={handleCopy}
-          className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-background transition-colors"
+          className="flex h-8 items-center gap-1.5 text-xs px-2.5 rounded-lg border border-border/60 bg-card text-muted-foreground hover:text-foreground hover:bg-secondary transition-all active:scale-95"
         >
-          {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-          {copied ? "Copied" : "Copy"}
+          {copied ? (
+            <Check className="h-3.5 w-3.5 text-emerald-400" />
+          ) : (
+            <Copy className="h-3.5 w-3.5" />
+          )}
+          <span>{copied ? "Copied" : "Copy"}</span>
         </button>
       </div>
 
       <div className="max-h-[500px] overflow-auto">
         {mode === "plain" && (
-          <pre className="p-4 whitespace-pre-wrap break-words text-sm font-mono">{text}</pre>
+          <pre className="p-4 sm:p-5 whitespace-pre-wrap break-words text-sm font-mono text-foreground leading-relaxed">
+            {text}
+          </pre>
         )}
 
         {mode === "markdown" && (
-          <div className="p-4 prose prose-sm prose-invert max-w-none">
-            <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]} components={markdownComponents}>
+          <div className="p-4 sm:p-5 prose prose-sm prose-invert max-w-none text-foreground leading-relaxed">
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm, remarkBreaks]}
+              components={markdownComponents}
+            >
               {text}
             </ReactMarkdown>
           </div>
@@ -117,7 +139,12 @@ export function TextViewer({ text }: { text: string }) {
           <SyntaxHighlighter
             language={language}
             style={oneDark}
-            customStyle={{ margin: 0, borderRadius: 0, fontSize: "0.8125rem" }}
+            customStyle={{
+              margin: 0,
+              borderRadius: 0,
+              fontSize: "0.8125rem",
+              padding: "1.25rem",
+            }}
             wrapLongLines
           >
             {text}
