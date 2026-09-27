@@ -1,8 +1,17 @@
+import type { Metadata } from "next";
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { DeviceList } from "@/components/devices/DeviceList";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+
+export const metadata: Metadata = {
+  title: "Devices",
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
 
 export interface DeviceSummary {
   id: string;

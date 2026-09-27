@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { Show } from "@clerk/nextjs";
 
 export function Footer() {
   return (
@@ -29,17 +32,25 @@ export function Footer() {
             Home
           </Link>
           <Link
-            href="/dashboard"
+            href="/privacy"
             className="hover:text-foreground transition-colors"
           >
-            Dashboard
+            Privacy
           </Link>
-          <Link
-            href="/dashboard/devices"
-            className="hover:text-foreground transition-colors"
-          >
-            Devices
-          </Link>
+          <Show when="signed-in">
+            <Link
+              href="/dashboard"
+              className="hover:text-foreground transition-colors"
+            >
+              Dashboard
+            </Link>
+            <Link
+              href="/dashboard/devices"
+              className="hover:text-foreground transition-colors"
+            >
+              Devices
+            </Link>
+          </Show>
         </nav>
 
         {/* Note */}

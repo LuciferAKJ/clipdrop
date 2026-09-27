@@ -1,8 +1,17 @@
+import type { Metadata } from "next";
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { DashboardList } from "@/components/dashboard/DashboardList";
 import Link from "next/link";
 import { Laptop, Plus } from "lucide-react";
+
+export const metadata: Metadata = {
+  title: "Uploads",
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
 
 export interface ShareSummary {
   id: string;
@@ -36,7 +45,10 @@ export default async function DashboardPage() {
     downloadLimit: s.downloadLimit,
     fileCount: s.files.length,
     hasText: !!s.textContent,
-    isExpired: s.expiresAt < now,
+    isExpired:
+      s.expiresAt < now ||
+      Boolean(s.consumedAt) ||
+      (s.downloadLimit !== null && s.downloadCount >= s.downloadLimit),
   }));
 
   return (

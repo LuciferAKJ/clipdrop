@@ -138,6 +138,12 @@ export function ShareCard({
         )
       : null;
 
+  const isUnavailable =
+    share.isExpired ||
+    (share.downloadLimit !== null &&
+      share.downloadLimit !== undefined &&
+      share.downloadCount >= share.downloadLimit);
+
   return (
     <div className="group rounded-2xl border border-border bg-card p-5 shadow-xs transition-all hover:border-primary/40 hover:shadow-sm flex flex-col justify-between">
       <div>
@@ -152,7 +158,7 @@ export function ShareCard({
             </p>
           </div>
 
-          <Badge expired={share.isExpired} />
+          <Badge expired={isUnavailable} />
         </div>
 
         {/* Metadata Details */}
@@ -215,15 +221,27 @@ export function ShareCard({
             <span>{copied ? "Copied" : "Copy Link"}</span>
           </Button>
 
-          <a
-            href={shareHref}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-border bg-card px-3 text-xs font-semibold text-foreground transition-colors hover:bg-secondary active:scale-[0.98]"
-          >
-            <ExternalLink className="h-3.5 w-3.5" />
-            <span>Open</span>
-          </a>
+          {isUnavailable ? (
+            <button
+              type="button"
+              disabled
+              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-border/40 bg-secondary/30 px-3 text-xs font-semibold text-muted-foreground/50 cursor-not-allowed select-none"
+              title="This share is expired or consumed and can no longer be opened"
+            >
+              <ExternalLink className="h-3.5 w-3.5 opacity-40" />
+              <span>Unavailable</span>
+            </button>
+          ) : (
+            <a
+              href={shareHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-border bg-card px-3 text-xs font-semibold text-foreground transition-colors hover:bg-secondary active:scale-[0.98]"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+              <span>Open</span>
+            </a>
+          )}
         </div>
 
         {/* Delete Trigger */}

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "sonner";
@@ -18,28 +18,57 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
+export const viewport: Viewport = {
+  themeColor: "#090d16",
+  colorScheme: "dark",
+  width: "device-width",
+  initialScale: 1,
+};
+
 export const metadata: Metadata = {
-  metadataBase: new URL(
-    process.env.NEXT_PUBLIC_APP_URL || "https://your-app.vercel.app",
-  ),
+  metadataBase: new URL(appUrl),
   title: {
     default: "ClipDrop — Share instantly, expires automatically",
     template: "%s · ClipDrop",
   },
   description:
-    "Share text and files instantly across devices. No account required, expires automatically.",
+    "Temporary transit for files, notes, and clipboard data across devices with optional password protection, download limits, and automatic expiration.",
+  applicationName: "ClipDrop",
+  authors: [{ name: "ClipDrop" }],
+  keywords: [
+    "file sharing",
+    "temporary file transfer",
+    "clipboard sync",
+    "cross-device transfer",
+    "auto-expiring files",
+    "code snippet share",
+  ],
+  alternates: appUrl
+    ? {
+        canonical: "/",
+      }
+    : undefined,
   openGraph: {
-    title: "ClipDrop",
-    description: "Share text and files instantly across devices.",
+    title: "ClipDrop — Share instantly, expires automatically",
+    description:
+      "Temporary transit for files, notes, and clipboard data across devices with automatic expiration.",
     type: "website",
     siteName: "ClipDrop",
+    locale: "en_US",
+    ...(appUrl ? { url: appUrl } : {}),
   },
   twitter: {
-    card: "summary",
-    title: "ClipDrop",
-    description: "Share text and files instantly across devices.",
+    card: "summary_large_image",
+    title: "ClipDrop — Share instantly, expires automatically",
+    description:
+      "Temporary transit for files, notes, and clipboard data across devices with automatic expiration.",
   },
-  robots: { index: true, follow: true },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export default function RootLayout({
