@@ -206,40 +206,48 @@ export function ShareCard({
 
       {/* Action Row */}
       <div className="mt-6 pt-4 border-t border-border/60 space-y-2">
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
           <Button
             size="sm"
             variant="outline"
             onClick={copyLink}
-            className="h-9 text-xs"
+            className="h-9 min-w-0 px-2 sm:px-3 text-xs"
           >
             {copied ? (
-              <Check className="mr-1.5 h-3.5 w-3.5 text-emerald-400" />
+              <Check className="mr-1.5 h-3.5 w-3.5 shrink-0 text-emerald-400" />
             ) : (
-              <Copy className="mr-1.5 h-3.5 w-3.5" />
+              <Copy className="mr-1.5 h-3.5 w-3.5 shrink-0" />
             )}
-            <span>{copied ? "Copied" : "Copy Link"}</span>
+            <span className="truncate">{copied ? "Copied" : "Copy Link"}</span>
           </Button>
 
           {isUnavailable ? (
             <button
               type="button"
               disabled
-              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-border/40 bg-secondary/30 px-3 text-xs font-semibold text-muted-foreground/50 cursor-not-allowed select-none"
+              className="inline-flex h-9 min-w-0 items-center justify-center gap-1.5 rounded-xl border border-border/40 bg-secondary/30 px-2 sm:px-3 text-xs font-semibold text-muted-foreground/50 cursor-not-allowed select-none"
               title="This share is expired or consumed and can no longer be opened"
             >
-              <ExternalLink className="h-3.5 w-3.5 opacity-40" />
-              <span>Unavailable</span>
+              <ExternalLink
+                className="h-3.5 w-3.5 shrink-0 opacity-40"
+                aria-hidden="true"
+              />
+              <span className="truncate">Unavailable</span>
             </button>
           ) : (
             <a
               href={shareHref}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-border bg-card px-3 text-xs font-semibold text-foreground transition-colors hover:bg-secondary active:scale-[0.98]"
+              aria-label={`Open share ${share.code} in new tab`}
+              className="inline-flex h-9 min-w-0 items-center justify-center gap-1.5 rounded-xl border border-border bg-card px-2 sm:px-3 text-xs font-semibold text-foreground transition-colors hover:bg-secondary active:scale-[0.98]"
             >
-              <ExternalLink className="h-3.5 w-3.5" />
-              <span>Open</span>
+              <ExternalLink
+                className="h-3.5 w-3.5 shrink-0"
+                aria-hidden="true"
+              />
+              <span className="truncate">Open</span>
+              <span className="sr-only">(opens in new tab)</span>
             </a>
           )}
         </div>
@@ -251,19 +259,22 @@ export function ShareCard({
           onClick={() => setOpen(true)}
           className="h-8 w-full text-xs text-muted-foreground hover:bg-destructive/15 hover:text-destructive transition-colors"
         >
-          <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+          <Trash2 className="mr-1.5 h-3.5 w-3.5 shrink-0" />
           <span>Delete Share</span>
         </Button>
       </div>
 
       {/* Confirmation Dialog */}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
+        <DialogContent aria-describedby="delete-share-description">
           <DialogHeader>
             <DialogTitle>Delete this share?</DialogTitle>
           </DialogHeader>
 
-          <p className="text-xs text-muted-foreground leading-relaxed">
+          <p
+            id="delete-share-description"
+            className="text-xs text-muted-foreground leading-relaxed"
+          >
             This permanently removes share code{" "}
             <strong className="font-mono text-foreground">{share.code}</strong>{" "}
             and any attached files. This action cannot be undone.

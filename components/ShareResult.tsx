@@ -91,11 +91,16 @@ export function ShareResult({
       <div className="space-y-2">
         <div className="flex justify-center">
           <div className="rounded-xl border border-white/20 bg-white p-2.5 shadow-sm">
-            <canvas ref={canvasRef} className="mx-auto rounded-lg" />
+            <canvas
+              ref={canvasRef}
+              role="img"
+              aria-label={`QR Code for share ${code}`}
+              className="mx-auto rounded-lg"
+            />
           </div>
         </div>
         <p className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
-          <QrCode className="h-3.5 w-3.5" />
+          <QrCode className="h-3.5 w-3.5" aria-hidden="true" />
           <span>Scan with another device to open instantly</span>
         </p>
       </div>
@@ -120,10 +125,12 @@ export function ShareResult({
           href={shareHref}
           target="_blank"
           rel="noopener noreferrer"
+          aria-label={`Open share ${code} in new tab`}
           className="inline-flex h-11 min-h-[44px] items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-semibold text-foreground transition-all hover:bg-secondary active:scale-[0.98]"
         >
-          <ExternalLink className="h-4 w-4" />
+          <ExternalLink className="h-4 w-4" aria-hidden="true" />
           <span>Open Share</span>
+          <span className="sr-only">(opens in new tab)</span>
         </a>
       </div>
 

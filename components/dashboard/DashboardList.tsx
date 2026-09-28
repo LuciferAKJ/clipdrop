@@ -117,6 +117,7 @@ export function DashboardList({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by code..."
+            aria-label="Search shares by code"
             className="pl-9.5 h-10 text-xs"
           />
         </div>

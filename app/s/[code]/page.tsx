@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
   AlertCircle,
@@ -349,13 +350,13 @@ export default function ReceivePage() {
           <button
             type="button"
             onClick={handleCopyCode}
-            className="text-muted-foreground hover:text-foreground transition-colors ml-1"
-            title="Copy share code"
+            aria-label="Copy share code"
+            className="inline-flex items-center justify-center p-1.5 -m-1 rounded-md text-muted-foreground hover:text-foreground transition-colors ml-1 min-h-[32px] min-w-[32px]"
           >
             {copiedCode ? (
-              <Check className="h-3 w-3 text-emerald-400" />
+              <Check className="h-3.5 w-3.5 text-emerald-400" />
             ) : (
-              <Copy className="h-3 w-3" />
+              <Copy className="h-3.5 w-3.5" />
             )}
           </button>
         </div>
@@ -414,6 +415,7 @@ export default function ReceivePage() {
                   download={f.originalName}
                   target="_blank"
                   rel="noopener noreferrer"
+                  aria-label={`Download ${f.originalName} (opens in new tab)`}
                   className="group flex items-center justify-between gap-3.5 rounded-2xl border border-border bg-card p-3.5 sm:p-4 shadow-xs transition-all hover:border-primary/40 hover:bg-secondary/40 active:scale-[0.99]"
                 >
                   <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -433,8 +435,9 @@ export default function ReceivePage() {
                   </div>
 
                   <div className="flex h-9 shrink-0 items-center gap-1.5 rounded-xl border border-border/80 bg-secondary/50 px-3 text-xs font-semibold text-foreground transition-all group-hover:bg-primary group-hover:text-primary-foreground group-hover:border-primary">
-                    <ArrowDownToLine className="h-4 w-4" />
+                    <ArrowDownToLine className="h-4 w-4" aria-hidden="true" />
                     <span className="hidden sm:inline">Download</span>
+                    <span className="sr-only">(opens in new tab)</span>
                   </div>
                 </a>
               );
@@ -445,14 +448,22 @@ export default function ReceivePage() {
 
       {/* Empty State */}
       {!hasText && !hasFiles && (
-        <div className="rounded-2xl border border-dashed border-border bg-card/40 p-10 text-center space-y-2">
+        <div className="rounded-2xl border border-dashed border-border bg-card/40 p-10 text-center space-y-4">
           <File className="mx-auto h-8 w-8 text-muted-foreground" />
-          <h2 className="font-heading text-sm font-semibold text-foreground">
-            Nothing was shared
-          </h2>
-          <p className="text-xs text-muted-foreground">
-            This link does not contain any files or text.
-          </p>
+          <div className="space-y-1">
+            <h2 className="font-heading text-sm font-semibold text-foreground">
+              Nothing was shared
+            </h2>
+            <p className="text-xs text-muted-foreground">
+              This link does not contain any files or text.
+            </p>
+          </div>
+          <Link
+            href="/"
+            className="inline-flex h-9 items-center justify-center rounded-xl bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-xs shadow-primary/20 transition-all hover:bg-primary/90"
+          >
+            Return Home
+          </Link>
         </div>
       )}
 
@@ -463,6 +474,17 @@ export default function ReceivePage() {
           <span>Shared content expires automatically</span>
         </div>
       )}
+
+      {/* Send files back CTA */}
+      <div className="pt-2 text-center">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors py-2 px-3 rounded-lg hover:bg-secondary/40"
+        >
+          <span>Need to send files back? Create a share</span>
+          <span aria-hidden="true">→</span>
+        </Link>
+      </div>
     </main>
   );
 }

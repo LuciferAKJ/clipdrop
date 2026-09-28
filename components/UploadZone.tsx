@@ -263,7 +263,7 @@ export function UploadZone() {
                       e.stopPropagation();
                       removeFile(i);
                     }}
-                    className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/15 hover:text-destructive transition-colors ml-2"
+                    className="relative flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/15 hover:text-destructive transition-colors ml-2 after:absolute after:-inset-2 after:content-['']"
                     aria-label={`Remove ${f.name}`}
                   >
                     <X className="h-3.5 w-3.5" />
@@ -285,6 +285,9 @@ export function UploadZone() {
       )}
       {status === "cancelled" && (
         <UploadProgress percent={0} status="cancelled" />
+      )}
+      {status === "error" && (
+        <UploadProgress percent={progress} status="error" />
       )}
 
       {/* Text Snippet Area */}

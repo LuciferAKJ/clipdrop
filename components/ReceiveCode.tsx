@@ -4,15 +4,17 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, KeyRound, ClipboardPaste } from "lucide-react";
+import { ArrowRight, KeyRound, ClipboardPaste, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 export function ReceiveCode() {
   const [code, setCode] = useState("");
+  const [navigating, setNavigating] = useState(false);
   const router = useRouter();
 
   function handleOpen() {
-    if (!code.trim()) return;
+    if (!code.trim() || navigating) return;
+    setNavigating(true);
     router.push(`/s/${code.trim().toUpperCase()}`);
   }
 
@@ -64,9 +66,10 @@ export function ReceiveCode() {
             <button
               type="button"
               onClick={handlePasteCode}
-              className="flex items-center gap-1 text-[11px] font-medium text-primary hover:underline transition-colors"
+              disabled={navigating}
+              className="inline-flex items-center gap-1.5 py-2 px-1 -my-2 text-[11px] font-medium text-primary hover:underline transition-colors min-h-[44px]"
             >
-              <ClipboardPaste className="h-3 w-3" />
+              <ClipboardPaste className="h-3.5 w-3.5" />
               <span>Paste from clipboard</span>
             </button>
           </div>
@@ -81,6 +84,7 @@ export function ReceiveCode() {
                 handleOpen();
               }
             }}
+            disabled={navigating}
             maxLength={20}
             autoComplete="off"
             className="h-12 text-center font-mono text-lg font-bold tracking-[0.2em] uppercase bg-secondary/30"
@@ -90,12 +94,21 @@ export function ReceiveCode() {
         {/* Open Button */}
         <Button
           onClick={handleOpen}
-          disabled={!code.trim()}
+          disabled={!code.trim() || navigating}
           size="lg"
           className="h-11 w-full text-sm font-semibold tracking-wide"
         >
-          <span>Open Share</span>
-          <ArrowRight className="ml-2 h-4 w-4" />
+          {navigating ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              <span>Opening Share...</span>
+            </>
+          ) : (
+            <>
+              <span>Open Share</span>
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </>
+          )}
         </Button>
       </div>
 

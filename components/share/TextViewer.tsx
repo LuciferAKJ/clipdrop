@@ -82,10 +82,16 @@ export function TextViewer({ text }: { text: string }) {
     <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-xs">
       <div className="flex items-center justify-between border-b border-border/80 px-3.5 py-2.5 bg-secondary/30">
         <div className="flex items-center gap-2">
-          <div className="flex gap-1 bg-secondary/60 p-0.5 rounded-lg">
+          <div
+            className="flex gap-1 bg-secondary/60 p-0.5 rounded-lg"
+            role="tablist"
+            aria-label="Text view mode"
+          >
             {MODES.map((m) => (
               <button
                 key={m.value}
+                role="tab"
+                aria-selected={mode === m.value}
                 onClick={() => setMode(m.value)}
                 className={`text-xs px-2.5 py-1 rounded-md transition-all font-medium ${
                   mode === m.value

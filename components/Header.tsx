@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Show, SignInButton, UserButton } from "@clerk/nextjs";
@@ -11,6 +11,18 @@ export function Header() {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const syncStatus = useClipboardSyncStatus();
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setMobileMenuOpen(false);
+      }
+    }
+    if (mobileMenuOpen) {
+      window.addEventListener("keydown", handleKeyDown);
+      return () => window.removeEventListener("keydown", handleKeyDown);
+    }
+  }, [mobileMenuOpen]);
 
   const isHome = pathname === "/";
   const isDashboard = pathname === "/dashboard";
@@ -161,72 +173,80 @@ export function Header() {
         </div>
       </div>
 
-      {/* Mobile Drawer Navigation */}
+      {/* Mobile Drawer Navigation & Backdrop */}
       {mobileMenuOpen && (
-        <div className="border-t border-border bg-background/95 px-4 py-4 backdrop-blur-xl md:hidden animate-in slide-in-from-top-2 duration-200">
-          <nav className="flex flex-col gap-1" aria-label="Mobile Navigation">
-            <Link
-              href="/"
-              onClick={() => setMobileMenuOpen(false)}
-              className={`flex h-11 items-center justify-between rounded-lg px-4 text-sm font-medium transition-colors ${
-                isHome
-                  ? "bg-secondary text-foreground"
-                  : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
-              }`}
-            >
-              <span>Home</span>
-              <ArrowUpRight className="h-4 w-4 opacity-50" />
-            </Link>
+        <>
+          <div
+            className="fixed inset-0 top-16 z-40 bg-black/60 backdrop-blur-xs md:hidden animate-in fade-in duration-200"
+            onClick={() => setMobileMenuOpen(false)}
+            aria-hidden="true"
+          />
 
-            <Show when="signed-in">
+          <div className="relative z-50 border-t border-border bg-background/95 px-4 py-4 backdrop-blur-xl md:hidden animate-in slide-in-from-top-2 duration-200">
+            <nav className="flex flex-col gap-1" aria-label="Mobile Navigation">
               <Link
-                href="/dashboard"
+                href="/"
                 onClick={() => setMobileMenuOpen(false)}
                 className={`flex h-11 items-center justify-between rounded-lg px-4 text-sm font-medium transition-colors ${
-                  isDashboard
+                  isHome
                     ? "bg-secondary text-foreground"
                     : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
                 }`}
               >
-                <span>Dashboard</span>
+                <span>Home</span>
                 <ArrowUpRight className="h-4 w-4 opacity-50" />
               </Link>
 
-              <Link
-                href="/dashboard/devices"
-                onClick={() => setMobileMenuOpen(false)}
-                className={`flex h-11 items-center justify-between rounded-lg px-4 text-sm font-medium transition-colors ${
-                  isDevices
-                    ? "bg-secondary text-foreground"
-                    : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
-                }`}
-              >
-                <span>Devices</span>
-                <ArrowUpRight className="h-4 w-4 opacity-50" />
-              </Link>
+              <Show when="signed-in">
+                <Link
+                  href="/dashboard"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`flex h-11 items-center justify-between rounded-lg px-4 text-sm font-medium transition-colors ${
+                    isDashboard
+                      ? "bg-secondary text-foreground"
+                      : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+                  }`}
+                >
+                  <span>Dashboard</span>
+                  <ArrowUpRight className="h-4 w-4 opacity-50" />
+                </Link>
 
-              <div className="mt-2 flex items-center justify-between border-t border-border/80 pt-3 px-2">
-                <span className="text-xs text-muted-foreground">
-                  Sync status
-                </span>
-                <div className="flex items-center gap-1.5">
-                  <span
-                    className={`h-2 w-2 rounded-full ${
-                      syncStatus.status === "error"
-                        ? "bg-destructive"
-                        : syncStatus.status === "idle"
-                          ? "bg-emerald-500"
-                          : "bg-primary animate-pulse"
-                    }`}
-                  />
-                  <span className="text-xs font-medium capitalize text-foreground">
-                    {syncStatus.status}
+                <Link
+                  href="/dashboard/devices"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`flex h-11 items-center justify-between rounded-lg px-4 text-sm font-medium transition-colors ${
+                    isDevices
+                      ? "bg-secondary text-foreground"
+                      : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+                  }`}
+                >
+                  <span>Devices</span>
+                  <ArrowUpRight className="h-4 w-4 opacity-50" />
+                </Link>
+
+                <div className="mt-2 flex items-center justify-between border-t border-border/80 pt-3 px-2">
+                  <span className="text-xs text-muted-foreground">
+                    Sync status
                   </span>
+                  <div className="flex items-center gap-1.5">
+                    <span
+                      className={`h-2 w-2 rounded-full ${
+                        syncStatus.status === "error"
+                          ? "bg-destructive"
+                          : syncStatus.status === "idle"
+                            ? "bg-emerald-500"
+                            : "bg-primary animate-pulse"
+                      }`}
+                    />
+                    <span className="text-xs font-medium capitalize text-foreground">
+                      {syncStatus.status}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            </Show>
-          </nav>
-        </div>
+              </Show>
+            </nav>
+          </div>
+        </>
       )}
     </header>
   );
