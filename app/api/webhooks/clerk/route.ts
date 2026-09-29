@@ -55,13 +55,23 @@ export async function POST(req: NextRequest) {
 
     case "user.deleted": {
       if (event.data.id) {
-        await prisma.user
-          .delete({
+        try {
+          await prisma.user.delete({
             where: {
               id: event.data.id,
             },
-          })
-          .catch(() => {});
+          });
+        } catch (error: unknown) {
+          // Idempotent: record already deleted or not found (Prisma P2025)
+          const prismaError = error as { code?: string };
+          if (prismaError?.code !== "P2025") {
+            console.error("Failed to delete user in Clerk webhook:", error);
+            return NextResponse.json(
+              { error: "Failed to delete user" },
+              { status: 500 },
+            );
+          }
+        }
       }
 
       break;

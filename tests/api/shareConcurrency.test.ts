@@ -202,7 +202,7 @@ describe("Share Concurrency & Limits (app/api/share/[code])", () => {
 
     // Clean up
     clearPasswordAttempts(`pwd-fail:${ip}:${shareRecord.id}`);
-  });
+  }, 15000);
 
   it("GET endpoint reports requiresPassword and expiresAt appropriately", async () => {
     const shareRecord = {

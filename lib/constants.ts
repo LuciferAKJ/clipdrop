@@ -7,8 +7,8 @@
 export const DEFAULT_SHARE_EXPIRY_MS = 60 * 60 * 1000; // 1 hour
 
 // Text limits
-export const MAX_TEXT_LENGTH = 50_000;
-export const MAX_CLIPBOARD_TEXT_LENGTH = 50_000;
+export const MAX_TEXT_LENGTH = 10_000;
+export const MAX_CLIPBOARD_TEXT_LENGTH = 10_000;
 
 // File limits
 export const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB

@@ -28,12 +28,14 @@ model Share {
   userId String?
   ipHash String?
 
-  user User? @relation(fields: [userId], references: [id])
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   files File[]
 
   @@index([expiresAt])
   @@index([ipHash])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([ipHash, createdAt])
 }
 
 model File {
@@ -50,6 +52,8 @@ model File {
   originalName String
 
   createdAt DateTime @default(now())
+
+  @@index([shareId])
 }
 
 model User {
@@ -64,7 +68,7 @@ model User {
 model Device {
   id           String   @id @default(cuid())
   userId       String
-  user         User     @relation(fields: [userId], references: [id])
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   clientId     String
   name         String
   registeredAt DateTime @default(now())
@@ -76,7 +80,7 @@ model Device {
 
 model ClipboardSync {
   userId      String               @id
-  user        User                 @relation(fields: [userId], references: [id])
+  user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   contentType ClipboardContentType @default(TEXT)
   textContent String?
   shareId     String?

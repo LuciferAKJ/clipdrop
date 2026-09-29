@@ -1,4 +1,5 @@
 import type { ClipboardContentType } from "@/lib/types/clipboard";
+import { MAX_TEXT_LENGTH } from "@/lib/constants";
 
 export const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
@@ -118,7 +119,7 @@ const BLOCKED_EXTENSIONS = [
 
 export const MAX_DEVICE_NAME_LENGTH = 100;
 const MAX_CLIENT_ID_LENGTH = 100;
-export const MAX_TEXT_LENGTH = 10_000;
+export { MAX_TEXT_LENGTH };
 
 const VALID_CONTENT_TYPES: ClipboardContentType[] = ["TEXT", "SHARE"];
 

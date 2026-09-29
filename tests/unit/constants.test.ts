@@ -4,8 +4,8 @@ import * as constants from "@/lib/constants";
 describe("constants", () => {
   it("exports the expected values", () => {
     expect(constants.DEFAULT_SHARE_EXPIRY_MS).toBe(60 * 60 * 1000);
-    expect(constants.MAX_TEXT_LENGTH).toBe(50_000);
-    expect(constants.MAX_CLIPBOARD_TEXT_LENGTH).toBe(50_000);
+    expect(constants.MAX_TEXT_LENGTH).toBe(10_000);
+    expect(constants.MAX_CLIPBOARD_TEXT_LENGTH).toBe(10_000);
     expect(constants.MAX_FILE_SIZE_BYTES).toBe(10 * 1024 * 1024);
     expect(constants.MAX_DEVICE_NAME_LENGTH).toBe(100);
     expect(constants.CLIPBOARD_POLL_INTERVAL_MS).toBe(3000);

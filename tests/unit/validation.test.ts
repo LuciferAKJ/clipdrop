@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { validateDeviceName, validateClipboardSync } from "@/lib/validation";
+import {
+  validateDeviceName,
+  validateClipboardSync,
+  MAX_TEXT_LENGTH,
+} from "@/lib/validation";
 
 describe("validateDeviceName", () => {
   it("accepts a normal name", () => {
@@ -50,8 +54,14 @@ describe("validateClipboardSync", () => {
 
   it("rejects TEXT with oversized textContent", () => {
     expect(() =>
-      validateClipboardSync("TEXT", "a".repeat(50_001), undefined),
+      validateClipboardSync("TEXT", "a".repeat(MAX_TEXT_LENGTH + 1), undefined),
     ).toThrow();
+  });
+
+  it("accepts TEXT at exactly MAX_TEXT_LENGTH", () => {
+    expect(() =>
+      validateClipboardSync("TEXT", "a".repeat(MAX_TEXT_LENGTH), undefined),
+    ).not.toThrow();
   });
 
   it("rejects SHARE with missing shareId", () => {
