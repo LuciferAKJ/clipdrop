@@ -47,8 +47,21 @@ export async function GET(
     return NextResponse.json({ error: "Expired" }, { status: 410 });
   }
 
+  const effectiveLimit = share.downloadLimit ?? (share.oneTimeUse ? 1 : null);
+
+  if (
+    share.consumedAt != null ||
+    (effectiveLimit !== null && (share.downloadCount ?? 0) >= effectiveLimit)
+  ) {
+    return NextResponse.json(
+      { error: "Download limit reached" },
+      { status: 410 },
+    );
+  }
+
   return NextResponse.json({
     requiresPassword: !!share.passwordHash,
+    oneTimeUse: !!share.oneTimeUse || share.downloadLimit === 1,
   });
 }
 

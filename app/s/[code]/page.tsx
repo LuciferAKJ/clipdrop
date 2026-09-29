@@ -9,12 +9,14 @@ import {
   Check,
   Clock,
   Copy,
+  Eye,
   File,
   FileArchive,
   FileCode2,
   FileImage,
   FileText,
   Film,
+  Loader2,
   LockKeyhole,
   Music,
   Share2,
@@ -44,6 +46,7 @@ interface ShareApiError {
 
 interface ShareMeta extends ShareApiError {
   requiresPassword?: boolean;
+  oneTimeUse?: boolean;
 }
 
 function getFileIcon(mime: string) {
@@ -136,10 +139,12 @@ export default function ReceivePage() {
   const { code } = useParams<{ code: string }>();
 
   const [needsPassword, setNeedsPassword] = useState(false);
+  const [isOneTime, setIsOneTime] = useState(false);
   const [password, setPassword] = useState("");
   const [data, setData] = useState<ShareData | null>(null);
   const [loading, setLoading] = useState(true);
   const [checking, setChecking] = useState(false);
+  const [revealing, setRevealing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copiedCode, setCopiedCode] = useState(false);
 
@@ -188,10 +193,17 @@ export default function ReceivePage() {
 
         if (cancelled) return;
 
+        setIsOneTime(!!meta.oneTimeUse);
+
         if (meta.requiresPassword) {
           setNeedsPassword(true);
           setLoading(false);
+        } else if (meta.oneTimeUse) {
+          // One-time share without password: do NOT consume automatically during page load.
+          // Wait for explicit user reveal to protect against automated link crawlers / prefetchers.
+          setLoading(false);
         } else {
+          // Normal share: preserve automatic loading
           await fetchContent();
         }
       } catch (e) {
@@ -211,7 +223,20 @@ export default function ReceivePage() {
     };
   }, [code, fetchContent]);
 
+  async function handleReveal() {
+    if (revealing || checking) return;
+    setRevealing(true);
+    try {
+      await fetchContent();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to reveal share");
+    } finally {
+      setRevealing(false);
+    }
+  }
+
   async function handleUnlock() {
+    if (checking || revealing || !password) return;
     try {
       await fetchContent(password);
     } catch (e) {
@@ -285,7 +310,7 @@ export default function ReceivePage() {
       <main className="mx-auto flex min-h-[65vh] max-w-md items-center justify-center px-4 py-12">
         <div className="w-full rounded-2xl border border-border bg-card p-6 sm:p-8 text-center shadow-xs">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary text-primary">
-            <LockKeyhole className="h-6 w-6" />
+            <LockKeyhole className="h-6 w-6" aria-hidden="true" />
           </div>
 
           <div className="mt-4 space-y-1">
@@ -294,7 +319,9 @@ export default function ReceivePage() {
             </h1>
 
             <p className="text-xs text-muted-foreground leading-relaxed">
-              This share is protected. Enter the password to access the content.
+              {isOneTime
+                ? "This is a password-protected one-time share. Entering the correct password will reveal and consume the content."
+                : "This share is protected. Enter the password to access the content."}
             </p>
           </div>
 
@@ -318,17 +345,82 @@ export default function ReceivePage() {
             />
 
             <Button
+              id="unlock-share-btn"
               onClick={handleUnlock}
-              disabled={checking || !password}
+              disabled={checking || revealing || !password}
+              aria-busy={checking}
               size="lg"
               className="h-11 w-full text-sm font-semibold tracking-wide"
             >
-              {checking ? "Checking..." : "Unlock Share"}
+              {checking ? (
+                <>
+                  <Loader2
+                    className="mr-2 h-4 w-4 animate-spin"
+                    aria-hidden="true"
+                  />
+                  <span>Checking...</span>
+                </>
+              ) : isOneTime ? (
+                "Unlock & Reveal Share"
+              ) : (
+                "Unlock Share"
+              )}
             </Button>
           </div>
 
           <p className="mt-5 text-[11px] text-muted-foreground">
             Password was set by the sender at upload time.
+          </p>
+        </div>
+      </main>
+    );
+  }
+
+  if (isOneTime && !data) {
+    return (
+      <main className="mx-auto flex min-h-[65vh] max-w-md items-center justify-center px-4 py-12">
+        <div className="w-full rounded-2xl border border-border bg-card p-6 sm:p-8 text-center shadow-xs">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary text-primary">
+            <Eye className="h-6 w-6" aria-hidden="true" />
+          </div>
+
+          <div className="mt-4 space-y-1">
+            <h1 className="font-heading text-xl font-bold tracking-tight text-foreground">
+              One-Time Share
+            </h1>
+
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              This content can only be revealed once. Once viewed, it cannot be
+              accessed again.
+            </p>
+          </div>
+
+          <div className="mt-6 space-y-3">
+            <Button
+              id="reveal-share-btn"
+              onClick={handleReveal}
+              disabled={revealing || checking}
+              aria-busy={revealing}
+              size="lg"
+              className="h-11 w-full text-sm font-semibold tracking-wide"
+            >
+              {revealing ? (
+                <>
+                  <Loader2
+                    className="mr-2 h-4 w-4 animate-spin"
+                    aria-hidden="true"
+                  />
+                  <span>Revealing…</span>
+                </>
+              ) : (
+                "Reveal Share"
+              )}
+            </Button>
+          </div>
+
+          <p className="mt-5 text-[11px] text-muted-foreground">
+            The sender configured this share to expire immediately after
+            viewing.
           </p>
         </div>
       </main>

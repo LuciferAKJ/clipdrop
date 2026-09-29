@@ -204,12 +204,16 @@ describe("Share Concurrency & Limits (app/api/share/[code])", () => {
     clearPasswordAttempts(`pwd-fail:${ip}:${shareRecord.id}`);
   }, 15000);
 
-  it("GET endpoint reports requiresPassword and expiresAt appropriately", async () => {
+  it("GET endpoint reports requiresPassword and oneTimeUse appropriately", async () => {
     const shareRecord = {
       id: "share-meta",
       code: "META01",
       passwordHash: "hash-exists",
       expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+      oneTimeUse: false,
+      downloadLimit: null,
+      downloadCount: 0,
+      consumedAt: null,
     };
 
     (prisma.share.findUnique as any).mockResolvedValue(shareRecord);
@@ -222,5 +226,177 @@ describe("Share Concurrency & Limits (app/api/share/[code])", () => {
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.requiresPassword).toBe(true);
+    expect(json.oneTimeUse).toBe(false);
+  });
+
+  it("GET endpoint reports oneTimeUse=true for one-time shares without consuming", async () => {
+    const shareRecord = {
+      id: "share-onetime",
+      code: "ONCE99",
+      passwordHash: null,
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+      oneTimeUse: true,
+      downloadLimit: 1,
+      downloadCount: 0,
+      consumedAt: null,
+    };
+
+    (prisma.share.findUnique as any).mockResolvedValue(shareRecord);
+
+    const req = new NextRequest("http://localhost/api/share/ONCE99", {
+      headers: { "x-real-ip": "198.51.100.78" },
+    });
+
+    const res = await GET(req, { params: Promise.resolve({ code: "ONCE99" }) });
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.requiresPassword).toBe(false);
+    expect(json.oneTimeUse).toBe(true);
+    expect(prisma.share.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("GET endpoint returns 410 if share was already consumed", async () => {
+    const shareRecord = {
+      id: "share-consumed",
+      code: "USED01",
+      passwordHash: null,
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+      oneTimeUse: true,
+      downloadLimit: 1,
+      downloadCount: 1,
+      consumedAt: new Date(),
+    };
+
+    (prisma.share.findUnique as any).mockResolvedValue(shareRecord);
+
+    const req = new NextRequest("http://localhost/api/share/USED01", {
+      headers: { "x-real-ip": "198.51.100.79" },
+    });
+
+    const res = await GET(req, { params: Promise.resolve({ code: "USED01" }) });
+    expect(res.status).toBe(410);
+    const json = await res.json();
+    expect(json.error).toBe("Download limit reached");
+  });
+
+  it("Expired one-time share returns 410 on both GET and POST", async () => {
+    const expiredRecord = {
+      id: "share-expired-onetime",
+      code: "EXP001",
+      passwordHash: null,
+      expiresAt: new Date(Date.now() - 60 * 1000), // expired 1 minute ago
+      oneTimeUse: true,
+      downloadLimit: 1,
+      downloadCount: 0,
+      consumedAt: null,
+      files: [],
+    };
+
+    (prisma.share.findUnique as any).mockResolvedValue(expiredRecord);
+
+    const getReq = new NextRequest("http://localhost/api/share/EXP001", {
+      headers: { "x-real-ip": "198.51.100.80" },
+    });
+    const getRes = await GET(getReq, {
+      params: Promise.resolve({ code: "EXP001" }),
+    });
+    expect(getRes.status).toBe(410);
+
+    const postReq = makeReq("EXP001", {}, { "x-real-ip": "198.51.100.80" });
+    const postRes = await POST(postReq, {
+      params: Promise.resolve({ code: "EXP001" }),
+    });
+    expect(postRes.status).toBe(410);
+    expect(prisma.share.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("One-time + password: wrong password does NOT consume the share", async () => {
+    const rawPass = "SecretOneTime1";
+    const hashed = await hashPassword(rawPass);
+
+    const shareRecord = {
+      id: "share-onetime-pwd",
+      code: "ONCPWD",
+      textContent: "Secret message",
+      passwordHash: hashed,
+      oneTimeUse: true,
+      downloadLimit: 1,
+      downloadCount: 0,
+      consumedAt: null,
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+      files: [],
+    };
+
+    (prisma.share.findUnique as any).mockResolvedValue(shareRecord);
+
+    const req = makeReq(
+      "ONCPWD",
+      { password: "WrongPassword" },
+      { "x-real-ip": "198.51.100.81" },
+    );
+    const res = await POST(req, {
+      params: Promise.resolve({ code: "ONCPWD" }),
+    });
+
+    expect(res.status).toBe(401);
+    expect(prisma.share.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("One-time + password: correct password atomically claims share, second attempt fails with 410", async () => {
+    const rawPass = "SecretOneTime2";
+    const hashed = await hashPassword(rawPass);
+
+    let count = 0;
+    const shareRecord = {
+      id: "share-onetime-pwd2",
+      code: "ONCPW2",
+      textContent: "Confidential payload",
+      passwordHash: hashed,
+      oneTimeUse: true,
+      downloadLimit: 1,
+      get downloadCount() {
+        return count;
+      },
+      consumedAt: null,
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+      files: [],
+    };
+
+    (prisma.share.findUnique as any).mockResolvedValue(shareRecord);
+    (prisma.share.updateMany as any).mockImplementation(({ where }: any) => {
+      if (where.downloadCount?.lt !== undefined) {
+        if (count < where.downloadCount.lt) {
+          count++;
+          return Promise.resolve({ count: 1 });
+        }
+        return Promise.resolve({ count: 0 });
+      }
+      return Promise.resolve({ count: 1 });
+    });
+
+    // 1st attempt: correct password -> claims share
+    const req1 = makeReq(
+      "ONCPW2",
+      { password: rawPass },
+      { "x-real-ip": "198.51.100.82" },
+    );
+    const res1 = await POST(req1, {
+      params: Promise.resolve({ code: "ONCPW2" }),
+    });
+    expect(res1.status).toBe(200);
+    const body1 = await res1.json();
+    expect(body1.textContent).toBe("Confidential payload");
+    expect(count).toBe(1);
+
+    // 2nd attempt: correct password -> already consumed, returns 410
+    const req2 = makeReq(
+      "ONCPW2",
+      { password: rawPass },
+      { "x-real-ip": "198.51.100.82" },
+    );
+    const res2 = await POST(req2, {
+      params: Promise.resolve({ code: "ONCPW2" }),
+    });
+    expect(res2.status).toBe(410);
   });
 });
