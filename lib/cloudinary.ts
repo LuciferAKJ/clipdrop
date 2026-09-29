@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import { v2 as cloudinary } from "cloudinary";
 
 cloudinary.config({
@@ -42,6 +43,9 @@ export async function uploadToCloudinary(
       .replace(/[^a-zA-Z0-9_-]/g, "_")
       .replace(/^_+|_+$/g, "");
 
+    const uniqueId = randomUUID();
+    const uniqueBase = safeBaseName ? `${uniqueId}-${safeBaseName}` : uniqueId;
+
     const uploadOptions: Record<string, unknown> = {
       resource_type: resourceType,
       folder: "clipdrop",
@@ -49,9 +53,9 @@ export async function uploadToCloudinary(
     };
 
     if (resourceType === "raw") {
-      uploadOptions.public_id = `${safeBaseName || "file"}${extension}`;
+      uploadOptions.public_id = `${uniqueBase}${extension}`;
     } else {
-      uploadOptions.public_id = safeBaseName || "file";
+      uploadOptions.public_id = uniqueBase;
     }
 
     const stream = cloudinary.uploader.upload_stream(

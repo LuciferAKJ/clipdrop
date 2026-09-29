@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { generateUniqueCode } from "@/lib/codeGen";
 import { validateTextShare, validateFile } from "@/lib/validation";
-import { uploadToCloudinary } from "@/lib/cloudinary";
+import { uploadToCloudinary, deleteFromCloudinary } from "@/lib/cloudinary";
 import { hashPassword } from "@/lib/password";
 import { auth } from "@clerk/nextjs/server";
 import { getClientIp, hashIp } from "@/lib/ipHash";
@@ -80,6 +80,10 @@ export async function POST(req: NextRequest) {
         downloadLimit = parsed;
       }
 
+      if (oneTimeUse && downloadLimit === null) {
+        downloadLimit = 1;
+      }
+
       const expiryKey = (expiryRaw as keyof typeof EXPIRY_OPTIONS) ?? "1h";
 
       const expiresAt = new Date(Date.now() + EXPIRY_OPTIONS[expiryKey]);
@@ -92,6 +96,11 @@ export async function POST(req: NextRequest) {
 
       if (text) {
         validateTextShare(text);
+      }
+
+      // Pre-validate ALL files before any Cloudinary upload or Share creation
+      for (const file of files) {
+        validateFile(file);
       }
 
       const share = await prisma.share.create({
@@ -107,23 +116,52 @@ export async function POST(req: NextRequest) {
         },
       });
 
-      for (const file of files) {
-        validateFile(file);
+      const uploadedCloudinaryAssets: { publicId: string; mimeType: string }[] =
+        [];
 
-        const buffer = Buffer.from(await file.arrayBuffer());
+      try {
+        for (const file of files) {
+          const buffer = Buffer.from(await file.arrayBuffer());
 
-        const uploaded = await uploadToCloudinary(buffer, file.name, file.type);
-
-        await prisma.file.create({
-          data: {
-            shareId: share.id,
-            url: uploaded.url,
+          const uploaded = await uploadToCloudinary(
+            buffer,
+            file.name,
+            file.type,
+          );
+          uploadedCloudinaryAssets.push({
             publicId: uploaded.publicId,
             mimeType: file.type,
-            sizeBytes: file.size,
-            originalName: file.name,
-          },
-        });
+          });
+
+          await prisma.file.create({
+            data: {
+              shareId: share.id,
+              url: uploaded.url,
+              publicId: uploaded.publicId,
+              mimeType: file.type,
+              sizeBytes: file.size,
+              originalName: file.name,
+            },
+          });
+        }
+      } catch (uploadError) {
+        // Rollback on failure: delete uploaded assets from Cloudinary
+        await Promise.allSettled(
+          uploadedCloudinaryAssets.map((asset) =>
+            deleteFromCloudinary(asset.publicId, asset.mimeType),
+          ),
+        );
+
+        // Delete the created share (cascading to any created File rows in DB)
+        await prisma.share
+          .delete({
+            where: { id: share.id },
+          })
+          .catch((delErr) => {
+            console.error("Failed to delete share during rollback:", delErr);
+          });
+
+        throw uploadError;
       }
 
       return NextResponse.json({ code: share.code }, { status: 201 });
@@ -157,6 +195,10 @@ export async function POST(req: NextRequest) {
         );
       }
       parsedDownloadLimit = parsed;
+    }
+
+    if (oneTimeUse && parsedDownloadLimit === null) {
+      parsedDownloadLimit = 1;
     }
 
     const expiryKey = (expiry as keyof typeof EXPIRY_OPTIONS) ?? "1h";
