@@ -22,6 +22,23 @@ const ALLOWED_DOWNLOAD_LIMITS = [1, 5, 10, 25, 50, 100];
 
 export async function POST(req: NextRequest) {
   try {
+    const origin = req.headers.get("origin");
+    const host = req.headers.get("host");
+
+    if (origin && host) {
+      try {
+        const originHost = new URL(origin).host;
+        if (originHost !== host) {
+          return NextResponse.json(
+            { error: "Cross-origin request rejected" },
+            { status: 403 },
+          );
+        }
+      } catch {
+        return NextResponse.json({ error: "Invalid origin" }, { status: 403 });
+      }
+    }
+
     const { userId } = await auth();
 
     const ipHash = hashIp(getClientIp(req));

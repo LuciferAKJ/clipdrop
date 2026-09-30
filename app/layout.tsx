@@ -18,7 +18,9 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+import { getAppUrl } from "@/lib/appUrl";
+
+const appUrl = getAppUrl();
 
 export const viewport: Viewport = {
   themeColor: "#090d16",

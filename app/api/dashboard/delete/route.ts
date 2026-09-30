@@ -4,6 +4,23 @@ import { prisma } from "@/lib/prisma";
 import { deleteFromCloudinary } from "@/lib/cloudinary";
 
 export async function DELETE(req: NextRequest) {
+  const origin = req.headers.get("origin");
+  const host = req.headers.get("host");
+
+  if (origin && host) {
+    try {
+      const originHost = new URL(origin).host;
+      if (originHost !== host) {
+        return NextResponse.json(
+          { error: "Cross-origin request rejected" },
+          { status: 403 },
+        );
+      }
+    } catch {
+      return NextResponse.json({ error: "Invalid origin" }, { status: 403 });
+    }
+  }
+
   const { userId } = await auth();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
