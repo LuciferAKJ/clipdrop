@@ -32,6 +32,12 @@ import { POST } from "@/app/api/upload/route";
 import { prisma } from "@/lib/prisma";
 import { uploadToCloudinary, deleteFromCloudinary } from "@/lib/cloudinary";
 
+const VALID_PNG_BYTES = Buffer.from([
+  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49,
+  0x48, 0x44, 0x52,
+]);
+const VALID_PDF_BYTES = Buffer.from("%PDF-1.4\n%sample\n");
+
 function makeUploadReq(formData: FormData, ip = "198.51.100.11") {
   const headers = new Headers();
   headers.set("content-type", "multipart/form-data");
@@ -51,7 +57,7 @@ describe("Upload Pre-validation & Rollback (app/api/upload)", () => {
   });
 
   it("F. multi-file upload rejects upfront if any file fails validation without touching Cloudinary or DB", async () => {
-    const validFile = new File(["valid image"], "photo.png", {
+    const validFile = new File([new Uint8Array(VALID_PNG_BYTES)], "photo.png", {
       type: "image/png",
     });
     // Disallowed executable mime type
@@ -76,10 +82,10 @@ describe("Upload Pre-validation & Rollback (app/api/upload)", () => {
   });
 
   it("G. multi-file upload performs complete rollback if Cloudinary upload fails midway", async () => {
-    const file1 = new File(["content 1"], "doc1.pdf", {
+    const file1 = new File([new Uint8Array(VALID_PDF_BYTES)], "doc1.pdf", {
       type: "application/pdf",
     });
-    const file2 = new File(["content 2"], "doc2.pdf", {
+    const file2 = new File([new Uint8Array(VALID_PDF_BYTES)], "doc2.pdf", {
       type: "application/pdf",
     });
 
@@ -121,8 +127,12 @@ describe("Upload Pre-validation & Rollback (app/api/upload)", () => {
   });
 
   it("I. legitimate multi-file upload creates share and files successfully", async () => {
-    const file1 = new File(["content 1"], "photo.png", { type: "image/png" });
-    const file2 = new File(["content 2"], "doc.txt", { type: "text/plain" });
+    const file1 = new File([new Uint8Array(VALID_PNG_BYTES)], "photo.png", {
+      type: "image/png",
+    });
+    const file2 = new File(["valid text note"], "doc.txt", {
+      type: "text/plain",
+    });
 
     const formData = new FormData();
     formData.append("files", file1);

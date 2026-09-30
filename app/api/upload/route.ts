@@ -98,9 +98,12 @@ export async function POST(req: NextRequest) {
         validateTextShare(text);
       }
 
-      // Pre-validate ALL files before any Cloudinary upload or Share creation
+      // Pre-read and validate ALL files (including content signatures) before any Cloudinary upload or Share creation
+      const fileBuffers: Buffer[] = [];
       for (const file of files) {
-        validateFile(file);
+        const buffer = Buffer.from(await file.arrayBuffer());
+        validateFile(file, buffer);
+        fileBuffers.push(buffer);
       }
 
       const share = await prisma.share.create({
@@ -120,8 +123,9 @@ export async function POST(req: NextRequest) {
         [];
 
       try {
-        for (const file of files) {
-          const buffer = Buffer.from(await file.arrayBuffer());
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          const buffer = fileBuffers[i];
 
           const uploaded = await uploadToCloudinary(
             buffer,
