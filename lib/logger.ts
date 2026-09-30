@@ -6,8 +6,6 @@
 
 type LogFields = Record<string, unknown>;
 
-const isProd = process.env.NODE_ENV === "production";
-
 function format(level: string, message: string, fields?: LogFields) {
   const base = `[${level}] ${message}`;
   return fields ? `${base} ${JSON.stringify(fields)}` : base;
@@ -15,12 +13,12 @@ function format(level: string, message: string, fields?: LogFields) {
 
 export const logger = {
   debug(message: string, fields?: LogFields) {
-    if (isProd) return;
+    if (process.env.NODE_ENV === "production") return;
     console.debug(format("debug", message, fields));
   },
 
   info(message: string, fields?: LogFields) {
-    if (isProd) return;
+    if (process.env.NODE_ENV === "production") return;
     console.info(format("info", message, fields));
   },
 

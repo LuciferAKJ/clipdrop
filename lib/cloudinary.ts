@@ -1,5 +1,6 @@
 import { randomUUID } from "crypto";
 import { v2 as cloudinary } from "cloudinary";
+import { logger } from "./logger";
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -62,17 +63,13 @@ export async function uploadToCloudinary(
       uploadOptions,
       (error, result) => {
         if (error || !result) {
-          console.error("Cloudinary upload error:", error);
+          logger.error("Cloudinary upload failed", error);
           return reject(error ?? new Error("Cloudinary upload failed"));
         }
 
-        console.log("CLOUDINARY UPLOAD RESULT:", {
+        logger.debug("Cloudinary upload completed", {
           resource_type: result.resource_type,
-          type: result.type,
-          public_id: result.public_id,
           format: result.format,
-          secure_url: result.secure_url,
-          bytes: result.bytes,
         });
 
         resolve({

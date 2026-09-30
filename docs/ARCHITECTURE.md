@@ -16,7 +16,7 @@ Although `lib/` is currently a flat directory, its files group into
 four conceptual feature areas:
 
 **Upload & Sharing**
-`codeGen.ts`, `cloudinary.ts`, `password.ts`, `rateLimiter.ts`,
+`codeGen.ts`, `cloudinary.ts`, `password.ts`, `rateLimit.ts`,
 `validation.ts` (share/file rules)
 
 **Device Management**

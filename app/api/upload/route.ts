@@ -7,6 +7,7 @@ import { hashPassword } from "@/lib/password";
 import { auth } from "@clerk/nextjs/server";
 import { getClientIp, hashIp } from "@/lib/ipHash";
 import { checkRateLimit, RateLimitError } from "@/lib/rateLimit";
+import { logger } from "@/lib/logger";
 
 const EXPIRY_OPTIONS: Record<string, number> = {
   "1h": 60 * 60 * 1000,
@@ -66,14 +67,9 @@ export async function POST(req: NextRequest) {
 
       const files = formData.getAll("files") as File[];
 
-      console.log(
-        "FILES RECEIVED:",
-        files.map((file) => ({
-          name: file.name,
-          type: file.type,
-          size: file.size,
-        })),
-      );
+      logger.debug("Files received for upload", {
+        count: files.length,
+      });
 
       const text = formData.get("text") as string | null;
       const password = formData.get("password") as string | null;
@@ -179,7 +175,7 @@ export async function POST(req: NextRequest) {
             where: { id: share.id },
           })
           .catch((delErr) => {
-            console.error("Failed to delete share during rollback:", delErr);
+            logger.error("Failed to delete share during rollback", delErr);
           });
 
         throw uploadError;
@@ -243,9 +239,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ code: share.code }, { status: 201 });
   } catch (error) {
-    console.error("========== UPLOAD ERROR ==========");
-    console.error(error);
-    console.error("===================================");
+    logger.error("Upload error", error);
 
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Upload failed" },

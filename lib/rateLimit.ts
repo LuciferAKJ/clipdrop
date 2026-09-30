@@ -1,7 +1,8 @@
 import { prisma } from "./prisma";
+import { RATE_LIMIT_WINDOW_MS, RATE_LIMIT_UPLOAD_MAX } from "./constants";
 
-const WINDOW_MS = 60_000;
-const MAX_UPLOADS_PER_WINDOW = 10;
+const WINDOW_MS = RATE_LIMIT_WINDOW_MS;
+const MAX_UPLOADS_PER_WINDOW = RATE_LIMIT_UPLOAD_MAX;
 
 export class RateLimitError extends Error {
   constructor(
