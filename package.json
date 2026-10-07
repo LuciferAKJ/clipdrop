@@ -18,8 +18,8 @@
   "dependencies": {
     "@base-ui/react": "^1.6.0",
     "@clerk/nextjs": "^7.5.20",
-    "@prisma/adapter-neon": "^7.8.0",
-    "@prisma/client": "^7.8.0",
+    "@prisma/adapter-neon": "7.10.0",
+    "@prisma/client": "7.10.0",
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
     "cloudinary": "^2.10.0",
@@ -29,7 +29,7 @@
     "nanoid": "^5.1.16",
     "next": "16.4.0",
     "next-themes": "^0.4.6",
-    "prisma": "^7.8.0",
+    "prisma": "7.10.0",
     "qrcode": "^1.5.4",
     "react": "19.2.4",
     "react-dom": "19.2.4",
@@ -39,7 +39,7 @@
     "react-syntax-highlighter": "^16.1.1",
     "remark-breaks": "^4.0.0",
     "remark-gfm": "^4.0.1",
-    "shadcn": "^4.13.0",
+    "shadcn": "4.21.4",
     "sonner": "^2.0.7",
     "svix": "^1.98.0",
     "tailwind-merge": "^3.6.0",
@@ -69,5 +69,8 @@
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "4.1.11"
+  },
+  "overrides": {
+    "postcss": "^8.5.29"
   }
 }
