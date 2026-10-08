@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import {
   AlertCircle,
   ArrowDownToLine,
@@ -20,6 +20,8 @@ import {
   LockKeyhole,
   Music,
   Share2,
+  ArrowLeft,
+  RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -137,6 +139,7 @@ function formatSize(bytes: number) {
 
 export default function ReceivePage() {
   const { code } = useParams<{ code: string }>();
+  const router = useRouter();
 
   const [needsPassword, setNeedsPassword] = useState(false);
   const [isOneTime, setIsOneTime] = useState(false);
@@ -254,12 +257,15 @@ export default function ReceivePage() {
   if (loading) {
     return (
       <main className="mx-auto max-w-2xl px-4 sm:px-6 py-12 sm:py-16">
-        <div className="space-y-4">
-          <Skeleton className="mx-auto h-8 w-44 rounded-xl" />
-          <Skeleton className="mx-auto h-4 w-64 rounded-lg" />
+        <div className="space-y-5">
+          <div className="text-center space-y-2.5">
+            <Skeleton className="mx-auto h-7 w-36 rounded-full" />
+            <Skeleton className="mx-auto h-9 w-60 rounded-xl" />
+            <Skeleton className="mx-auto h-4 w-44 rounded-lg" />
+          </div>
           <div className="pt-4 space-y-3">
-            <Skeleton className="h-28 w-full rounded-2xl" />
-            <Skeleton className="h-20 w-full rounded-2xl" />
+            <Skeleton className="h-32 w-full rounded-2xl" />
+            <Skeleton className="h-24 w-full rounded-2xl" />
           </div>
         </div>
       </main>
@@ -269,35 +275,38 @@ export default function ReceivePage() {
   if (error) {
     return (
       <main className="mx-auto flex min-h-[60vh] max-w-md items-center justify-center px-4 py-12">
-        <div className="w-full rounded-2xl border border-border bg-card p-6 sm:p-8 text-center shadow-xs">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-destructive/15 text-destructive">
-            <AlertCircle className="h-6 w-6" />
+        <div className="w-full rounded-2xl border border-border/80 bg-card p-6 sm:p-8 text-center shadow-xs space-y-6">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-destructive/15 text-destructive border border-destructive/25 shadow-xs">
+            <AlertCircle className="h-7 w-7" />
           </div>
 
-          <h1 className="mt-4 font-heading text-lg font-semibold text-foreground">
-            Share not found
-          </h1>
+          <div className="space-y-1.5">
+            <h1 className="font-heading text-xl font-bold tracking-tight text-foreground">
+              Share not found
+            </h1>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              {error ||
+                "This share is no longer available, has expired, or reached its maximum download limit."}
+            </p>
+          </div>
 
-          <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">
-            {error ||
-              "This share is no longer available or has reached its download limit."}
-          </p>
-
-          <div className="mt-6 flex flex-col sm:flex-row gap-2.5 justify-center">
+          <div className="flex flex-col sm:flex-row gap-2.5 justify-center pt-2">
             <Button
               variant="outline"
               size="lg"
-              className="h-10 text-xs w-full sm:w-auto"
+              className="h-11 text-xs w-full sm:w-auto font-medium"
               onClick={() => window.location.reload()}
             >
-              Try Again
+              <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+              <span>Try Again</span>
             </Button>
             <Button
               size="lg"
-              className="h-10 text-xs w-full sm:w-auto"
-              onClick={() => (window.location.href = "/")}
+              className="h-11 text-xs w-full sm:w-auto font-semibold shadow-sm shadow-primary/20"
+              onClick={() => router.push("/")}
             >
-              Back to Home
+              <ArrowLeft className="mr-1.5 h-3.5 w-3.5" />
+              <span>Back to Home</span>
             </Button>
           </div>
         </div>
@@ -308,29 +317,31 @@ export default function ReceivePage() {
   if (needsPassword) {
     return (
       <main className="mx-auto flex min-h-[65vh] max-w-md items-center justify-center px-4 py-12">
-        <div className="w-full rounded-2xl border border-border bg-card p-6 sm:p-8 text-center shadow-xs">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary text-primary">
-            <LockKeyhole className="h-6 w-6" aria-hidden="true" />
+        <div className="w-full rounded-2xl border border-border/80 bg-card p-6 sm:p-8 text-center shadow-xs space-y-6">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-secondary text-primary border border-border/60 shadow-xs">
+            <LockKeyhole className="h-7 w-7 stroke-[1.75]" aria-hidden="true" />
           </div>
 
-          <div className="mt-4 space-y-1">
+          <div className="space-y-1.5">
+            <div className="inline-flex items-center gap-1.5 font-mono text-[11px] font-semibold uppercase tracking-wider text-primary bg-primary/10 px-2.5 py-0.5 rounded-full border border-primary/20">
+              <span>{code.toUpperCase()}</span>
+            </div>
             <h1 className="font-heading text-xl font-bold tracking-tight text-foreground">
               Password Required
             </h1>
-
             <p className="text-xs text-muted-foreground leading-relaxed">
               {isOneTime
                 ? "This is a password-protected one-time share. Entering the correct password will reveal and consume the content."
-                : "This share is protected. Enter the password to access the content."}
+                : "This share is protected with encryption. Enter the password set by the sender to access the content."}
             </p>
           </div>
 
-          <div className="mt-6 space-y-3 text-left">
+          <div className="space-y-3 text-left">
             <label
               htmlFor="share-password"
-              className="text-xs font-medium text-muted-foreground"
+              className="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
             >
-              Password
+              Recipient Password
             </label>
 
             <Input
@@ -341,7 +352,8 @@ export default function ReceivePage() {
               onChange={(e) => setPassword(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleUnlock()}
               autoComplete="current-password"
-              className="h-11"
+              className="h-12 text-sm"
+              autoFocus
             />
 
             <Button
@@ -350,7 +362,7 @@ export default function ReceivePage() {
               disabled={checking || revealing || !password}
               aria-busy={checking}
               size="lg"
-              className="h-11 w-full text-sm font-semibold tracking-wide"
+              className="h-12 w-full text-sm font-semibold tracking-wide shadow-md shadow-primary/10"
             >
               {checking ? (
                 <>
@@ -358,7 +370,7 @@ export default function ReceivePage() {
                     className="mr-2 h-4 w-4 animate-spin"
                     aria-hidden="true"
                   />
-                  <span>Checking...</span>
+                  <span>Verifying Password...</span>
                 </>
               ) : isOneTime ? (
                 "Unlock & Reveal Share"
@@ -368,8 +380,8 @@ export default function ReceivePage() {
             </Button>
           </div>
 
-          <p className="mt-5 text-[11px] text-muted-foreground">
-            Password was set by the sender at upload time.
+          <p className="text-[11px] text-muted-foreground pt-1 border-t border-border/40">
+            Protected with zero-knowledge bcrypt password authentication.
           </p>
         </div>
       </main>
@@ -379,30 +391,32 @@ export default function ReceivePage() {
   if (isOneTime && !data) {
     return (
       <main className="mx-auto flex min-h-[65vh] max-w-md items-center justify-center px-4 py-12">
-        <div className="w-full rounded-2xl border border-border bg-card p-6 sm:p-8 text-center shadow-xs">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary text-primary">
-            <Eye className="h-6 w-6" aria-hidden="true" />
+        <div className="w-full rounded-2xl border border-border/80 bg-card p-6 sm:p-8 text-center shadow-xs space-y-6">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500/15 text-amber-400 border border-amber-500/30 shadow-xs">
+            <Eye className="h-7 w-7 stroke-[1.75]" aria-hidden="true" />
           </div>
 
-          <div className="mt-4 space-y-1">
+          <div className="space-y-1.5">
+            <div className="inline-flex items-center gap-1.5 font-mono text-[11px] font-semibold uppercase tracking-wider text-amber-400 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20">
+              <span>SINGLE VIEW PROTOCOL</span>
+            </div>
             <h1 className="font-heading text-xl font-bold tracking-tight text-foreground">
               One-Time Share
             </h1>
-
             <p className="text-xs text-muted-foreground leading-relaxed">
-              This content can only be revealed once. Once viewed, it cannot be
-              accessed again.
+              This content can only be revealed once. Once viewed or downloaded,
+              it is permanently consumed and cannot be accessed again.
             </p>
           </div>
 
-          <div className="mt-6 space-y-3">
+          <div className="space-y-3">
             <Button
               id="reveal-share-btn"
               onClick={handleReveal}
               disabled={revealing || checking}
               aria-busy={revealing}
               size="lg"
-              className="h-11 w-full text-sm font-semibold tracking-wide"
+              className="h-12 w-full text-sm font-semibold tracking-wide shadow-md shadow-primary/10"
             >
               {revealing ? (
                 <>
@@ -410,7 +424,7 @@ export default function ReceivePage() {
                     className="mr-2 h-4 w-4 animate-spin"
                     aria-hidden="true"
                   />
-                  <span>Revealing…</span>
+                  <span>Revealing &amp; Consuming…</span>
                 </>
               ) : (
                 "Reveal Share"
@@ -418,9 +432,9 @@ export default function ReceivePage() {
             </Button>
           </div>
 
-          <p className="mt-5 text-[11px] text-muted-foreground">
-            The sender configured this share to expire immediately after
-            viewing.
+          <p className="text-[11px] text-muted-foreground pt-1 border-t border-border/40">
+            Automated crawlers and prefetchers are blocked from burning this
+            share.
           </p>
         </div>
       </main>
@@ -435,8 +449,8 @@ export default function ReceivePage() {
     <main className="mx-auto max-w-2xl px-4 sm:px-6 py-8 sm:py-14 space-y-8">
       {/* Header Info */}
       <div className="text-center space-y-3">
-        <div className="inline-flex items-center gap-2 rounded-full border border-border bg-secondary/50 px-3.5 py-1 text-xs">
-          <span className="font-mono font-bold tracking-wider text-foreground">
+        <div className="inline-flex items-center gap-2 rounded-full border border-border/80 bg-secondary/50 px-3.5 py-1 text-xs backdrop-blur-xs">
+          <span className="font-mono font-bold tracking-widest text-foreground">
             {code.toUpperCase()}
           </span>
           <button
@@ -508,10 +522,10 @@ export default function ReceivePage() {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={`Download ${f.originalName} (opens in new tab)`}
-                  className="group flex items-center justify-between gap-3.5 rounded-2xl border border-border bg-card p-3.5 sm:p-4 shadow-xs transition-all hover:border-primary/40 hover:bg-secondary/40 active:scale-[0.99]"
+                  className="group flex items-center justify-between gap-3.5 rounded-2xl border border-border/80 bg-card p-3.5 sm:p-4 shadow-xs transition-all hover:border-primary/50 hover:bg-secondary/30 active:scale-[0.99]"
                 >
                   <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-secondary text-primary transition-transform group-hover:scale-105">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-secondary text-primary border border-border/60 transition-transform group-hover:scale-105 shadow-xs">
                       <Icon className="h-5 w-5" />
                     </div>
 
@@ -526,7 +540,7 @@ export default function ReceivePage() {
                     </div>
                   </div>
 
-                  <div className="flex h-9 shrink-0 items-center gap-1.5 rounded-xl border border-border/80 bg-secondary/50 px-3 text-xs font-semibold text-foreground transition-all group-hover:bg-primary group-hover:text-primary-foreground group-hover:border-primary">
+                  <div className="flex h-10 shrink-0 items-center gap-1.5 rounded-xl border border-border/80 bg-secondary/60 px-3.5 text-xs font-semibold text-foreground transition-all group-hover:bg-primary group-hover:text-primary-foreground group-hover:border-primary shadow-xs">
                     <ArrowDownToLine className="h-4 w-4" aria-hidden="true" />
                     <span className="hidden sm:inline">Download</span>
                     <span className="sr-only">(opens in new tab)</span>
@@ -552,7 +566,7 @@ export default function ReceivePage() {
           </div>
           <Link
             href="/"
-            className="inline-flex h-9 items-center justify-center rounded-xl bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-xs shadow-primary/20 transition-all hover:bg-primary/90"
+            className="inline-flex h-10 items-center justify-center rounded-xl bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-xs shadow-primary/20 transition-all hover:bg-primary/90"
           >
             Return Home
           </Link>
@@ -562,8 +576,11 @@ export default function ReceivePage() {
       {/* Expiry Footnote */}
       {(hasFiles || hasText) && (
         <div className="flex items-center justify-center gap-1.5 pt-4 text-center text-xs text-muted-foreground">
-          <Clock className="h-3.5 w-3.5" />
-          <span>Shared content expires automatically</span>
+          <Clock className="h-3.5 w-3.5 text-primary" />
+          <span>
+            Shared content expires automatically according to sender
+            configuration
+          </span>
         </div>
       )}
 
@@ -571,9 +588,9 @@ export default function ReceivePage() {
       <div className="pt-2 text-center">
         <Link
           href="/"
-          className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors py-2 px-3 rounded-lg hover:bg-secondary/40"
+          className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors py-2 px-3 rounded-lg hover:bg-secondary/40 min-h-[44px]"
         >
-          <span>Need to send files back? Create a share</span>
+          <span>Need to send files back? Create an ephemeral share</span>
           <span aria-hidden="true">→</span>
         </Link>
       </div>

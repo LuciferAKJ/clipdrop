@@ -5,6 +5,11 @@ import { toast } from "sonner";
 
 vi.mock("next/navigation", () => ({
   useParams: () => ({ code: "CODE123" }),
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    back: vi.fn(),
+  }),
 }));
 
 // Mock LazyTextViewer to render synchronously in tests
