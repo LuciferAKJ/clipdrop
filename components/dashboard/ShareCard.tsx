@@ -16,23 +16,23 @@ import {
   Copy,
   Download,
   ExternalLink,
-  FileText,
   Trash2,
+  Layers,
 } from "lucide-react";
 import type { ShareSummary } from "@/app/dashboard/page";
 
-function Badge({ expired }: { expired: boolean }) {
+function StatusBadge({ expired }: { expired: boolean }) {
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium ${
+      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium border ${
         expired
-          ? "bg-destructive/15 text-destructive"
-          : "bg-emerald-500/15 text-emerald-400"
+          ? "border-destructive/30 bg-destructive/10 text-destructive"
+          : "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
       }`}
     >
       <span
         className={`h-1.5 w-1.5 rounded-full ${
-          expired ? "bg-destructive" : "bg-emerald-400"
+          expired ? "bg-destructive" : "bg-emerald-400 animate-pulse"
         }`}
       />
       <span>{expired ? "Expired" : "Active"}</span>
@@ -80,7 +80,7 @@ export function ShareCard({
     if (typeof window === "undefined") return;
 
     navigator.clipboard.writeText(`${window.location.origin}${shareHref}`);
-    toast.success("Link copied");
+    toast.success("Link copied to clipboard");
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
@@ -105,7 +105,7 @@ export function ShareCard({
         throw new Error(json.error || "Delete failed");
       }
 
-      toast.success("Share deleted");
+      toast.success("Share deleted successfully");
       onDeleted(share.id);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Delete failed");
@@ -118,7 +118,7 @@ export function ShareCard({
   const downloadDisplay =
     share.downloadLimit !== null && share.downloadLimit !== undefined
       ? `${share.downloadCount} / ${share.downloadLimit}`
-      : `${share.downloadCount} · Unlimited`;
+      : `${share.downloadCount} (Unlimited)`;
 
   const contentDisplay =
     [
@@ -145,27 +145,27 @@ export function ShareCard({
       share.downloadCount >= share.downloadLimit);
 
   return (
-    <div className="group rounded-2xl border border-border bg-card p-5 shadow-xs transition-all hover:border-primary/40 hover:shadow-sm flex flex-col justify-between">
+    <div className="group rounded-2xl border border-border/80 bg-card/90 p-5 shadow-xs transition-all hover:border-brand-500/40 hover:shadow-md flex flex-col justify-between">
       <div>
         {/* Top Header */}
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Code
+            <span className="text-[10px] font-mono font-semibold uppercase tracking-wider text-muted-foreground">
+              Transit Code
             </span>
-            <p className="mt-0.5 truncate font-mono text-xl font-bold tracking-wider text-foreground">
+            <p className="mt-0.5 truncate font-mono text-xl font-bold tracking-widest text-foreground">
               {share.code}
             </p>
           </div>
 
-          <Badge expired={isUnavailable} />
+          <StatusBadge expired={isUnavailable} />
         </div>
 
         {/* Metadata Details */}
-        <div className="mt-5 space-y-2.5">
+        <div className="mt-5 space-y-3">
           <div className="flex items-center justify-between text-xs">
             <span className="flex items-center gap-1.5 text-muted-foreground">
-              <FileText className="h-3.5 w-3.5" />
+              <Layers className="h-3.5 w-3.5" />
               <span>Content</span>
             </span>
             <span className="font-medium text-foreground truncate max-w-[60%] text-right">
@@ -186,7 +186,7 @@ export function ShareCard({
           {percentUsed !== null && (
             <div className="h-1.5 w-full rounded-full bg-secondary overflow-hidden">
               <div
-                className="h-full rounded-full bg-primary transition-all duration-300"
+                className="h-full rounded-full bg-gradient-to-r from-brand-500 to-indigo-500 transition-all duration-300"
                 style={{ width: `${percentUsed}%` }}
               />
             </div>
@@ -197,7 +197,7 @@ export function ShareCard({
               <Clock className="h-3.5 w-3.5" />
               <span>Expires</span>
             </span>
-            <span className="font-medium text-foreground">
+            <span className="font-medium text-foreground font-mono text-[11px]">
               {relativeTime(share.expiresAt)}
             </span>
           </div>
@@ -206,12 +206,13 @@ export function ShareCard({
 
       {/* Action Row */}
       <div className="mt-6 pt-4 border-t border-border/60 space-y-2">
-        <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
+        <div className="grid grid-cols-2 gap-2">
           <Button
             size="sm"
             variant="outline"
             onClick={copyLink}
-            className="h-9 min-w-0 px-2 sm:px-3 text-xs"
+            className="h-9 min-h-[38px] min-w-0 px-2 sm:px-3 text-xs rounded-xl"
+            aria-label={`Copy share link for code ${share.code}`}
           >
             {copied ? (
               <Check className="mr-1.5 h-3.5 w-3.5 shrink-0 text-emerald-400" />
@@ -225,8 +226,8 @@ export function ShareCard({
             <button
               type="button"
               disabled
-              className="inline-flex h-9 min-w-0 items-center justify-center gap-1.5 rounded-xl border border-border/40 bg-secondary/30 px-2 sm:px-3 text-xs font-semibold text-muted-foreground/50 cursor-not-allowed select-none"
-              title="This share is expired or consumed and can no longer be opened"
+              className="inline-flex h-9 min-h-[38px] min-w-0 items-center justify-center gap-1.5 rounded-xl border border-border/40 bg-secondary/30 px-2 sm:px-3 text-xs font-semibold text-muted-foreground/50 cursor-not-allowed select-none"
+              title="This share is expired or consumed and can no longer be accessed"
             >
               <ExternalLink
                 className="h-3.5 w-3.5 shrink-0 opacity-40"
@@ -240,7 +241,7 @@ export function ShareCard({
               target="_blank"
               rel="noopener noreferrer"
               aria-label={`Open share ${share.code} in new tab`}
-              className="inline-flex h-9 min-w-0 items-center justify-center gap-1.5 rounded-xl border border-border bg-card px-2 sm:px-3 text-xs font-semibold text-foreground transition-colors hover:bg-secondary active:scale-[0.98]"
+              className="inline-flex h-9 min-h-[38px] min-w-0 items-center justify-center gap-1.5 rounded-xl border border-border/80 bg-card px-2 sm:px-3 text-xs font-semibold text-foreground transition-all hover:bg-secondary hover:border-border active:scale-[0.985] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/50"
             >
               <ExternalLink
                 className="h-3.5 w-3.5 shrink-0"
@@ -257,7 +258,8 @@ export function ShareCard({
           size="sm"
           variant="ghost"
           onClick={() => setOpen(true)}
-          className="h-8 w-full text-xs text-muted-foreground hover:bg-destructive/15 hover:text-destructive transition-colors"
+          className="h-8.5 min-h-[36px] w-full text-xs text-muted-foreground hover:bg-destructive/15 hover:text-destructive transition-colors rounded-xl"
+          aria-label={`Delete share code ${share.code}`}
         >
           <Trash2 className="mr-1.5 h-3.5 w-3.5 shrink-0" />
           <span>Delete Share</span>
@@ -275,9 +277,10 @@ export function ShareCard({
             id="delete-share-description"
             className="text-xs text-muted-foreground leading-relaxed"
           >
-            This permanently removes share code{" "}
+            This permanently removes transit code{" "}
             <strong className="font-mono text-foreground">{share.code}</strong>{" "}
-            and any attached files. This action cannot be undone.
+            and deletes any attached files from cloud storage. This action
+            cannot be undone.
           </p>
 
           <DialogFooter>
@@ -286,6 +289,7 @@ export function ShareCard({
               size="sm"
               onClick={() => setOpen(false)}
               disabled={deleting}
+              className="rounded-xl min-h-[38px]"
             >
               Cancel
             </Button>
@@ -295,8 +299,9 @@ export function ShareCard({
               size="sm"
               onClick={handleDelete}
               disabled={deleting}
+              className="rounded-xl min-h-[38px]"
             >
-              {deleting ? "Deleting..." : "Delete"}
+              {deleting ? "Deleting..." : "Delete Permanently"}
             </Button>
           </DialogFooter>
         </DialogContent>

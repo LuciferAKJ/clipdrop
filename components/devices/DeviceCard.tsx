@@ -1,4 +1,5 @@
 "use client";
+
 import { useState } from "react";
 import { toast } from "sonner";
 import { withClientIdHeader } from "@/lib/deviceClient";
@@ -62,7 +63,7 @@ export function DeviceCard({
 
   async function handleRename() {
     if (!nameInput.trim()) {
-      toast.error("Name cannot be empty");
+      toast.error("Device name cannot be empty");
       return;
     }
     setSaving(true);
@@ -76,7 +77,7 @@ export function DeviceCard({
       if (!res.ok) throw new Error(json.error || "Rename failed");
 
       onRenamed(device.id, nameInput.trim());
-      toast.success("Device renamed");
+      toast.success("Device renamed successfully");
       setEditing(false);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Rename failed");
@@ -96,7 +97,7 @@ export function DeviceCard({
       if (!res.ok) throw new Error(json.error || "Delete failed");
 
       onDeleted(device.id);
-      toast.success("Device removed");
+      toast.success("Device removed from sync network");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Delete failed");
     } finally {
@@ -106,9 +107,9 @@ export function DeviceCard({
   }
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-4 sm:p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all hover:border-primary/30">
+    <div className="rounded-2xl border border-border/80 bg-card/90 p-4 sm:p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all hover:border-brand-500/30 hover:shadow-sm">
       <div className="flex items-start gap-3.5 min-w-0 flex-1">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-secondary text-primary">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-500/10 text-brand-400 border border-brand-500/20">
           <DeviceIcon name={device.name} />
         </div>
 
@@ -118,9 +119,9 @@ export function DeviceCard({
               <Input
                 value={nameInput}
                 onChange={(e) => setNameInput(e.target.value)}
-                className="h-9 text-xs max-w-xs"
+                className="h-9 min-h-[38px] text-xs max-w-xs rounded-xl bg-card border-border/80"
                 autoFocus
-                aria-label="Device name"
+                aria-label="Edit device name"
                 onKeyDown={(e) => {
                   if (e.key === "Enter") handleRename();
                   if (e.key === "Escape") {
@@ -133,7 +134,7 @@ export function DeviceCard({
                 size="sm"
                 onClick={handleRename}
                 disabled={saving}
-                className="h-9 text-xs"
+                className="h-9 min-h-[38px] text-xs rounded-xl bg-brand-500 text-white hover:bg-brand-500/90"
               >
                 {saving ? "Saving..." : "Save"}
               </Button>
@@ -145,7 +146,7 @@ export function DeviceCard({
                   setEditing(false);
                 }}
                 disabled={saving}
-                className="h-9 text-xs"
+                className="h-9 min-h-[38px] text-xs rounded-xl"
               >
                 Cancel
               </Button>
@@ -157,20 +158,21 @@ export function DeviceCard({
                   {primary}
                 </p>
                 {isCurrent && (
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/20 shrink-0">
-                    Current Device
+                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                    <span>Current Device</span>
                   </span>
                 )}
               </div>
 
               {secondary && (
-                <p className="text-xs text-muted-foreground truncate">
+                <p className="text-xs text-muted-foreground truncate font-mono">
                   {secondary}
                 </p>
               )}
 
               <p className="text-[11px] text-muted-foreground flex items-center gap-1.5 pt-0.5 font-mono">
-                <Clock className="h-3 w-3" />
+                <Clock className="h-3 w-3 text-muted-foreground/80" />
                 <span>
                   Registered{" "}
                   {new Date(device.registeredAt).toLocaleDateString()} · Last
@@ -192,7 +194,8 @@ export function DeviceCard({
             size="sm"
             variant="outline"
             onClick={() => setEditing(true)}
-            className="h-8.5 text-xs px-3"
+            className="h-8.5 min-h-[36px] text-xs px-3 rounded-xl"
+            aria-label={`Rename device ${primary}`}
           >
             Rename
           </Button>
@@ -201,12 +204,13 @@ export function DeviceCard({
             variant="destructive"
             onClick={() => setDeleteOpen(true)}
             disabled={isCurrent}
-            className="h-8.5 text-xs px-3"
+            className="h-8.5 min-h-[36px] text-xs px-3 rounded-xl"
             title={
               isCurrent
-                ? "Can't remove the device you're currently using"
-                : undefined
+                ? "Can't remove the device you are currently active on"
+                : `Remove device ${primary}`
             }
+            aria-label={`Remove device ${primary}`}
           >
             Remove
           </Button>
@@ -223,8 +227,9 @@ export function DeviceCard({
             id="delete-device-description"
             className="text-xs text-muted-foreground leading-relaxed"
           >
-            <strong className="text-foreground">{primary}</strong> will no
-            longer be registered to your account for clipboard syncing.
+            <strong className="text-foreground">{primary}</strong> will be
+            disconnected and will no longer receive clipboard synchronization
+            events from your other devices.
           </p>
           <DialogFooter>
             <Button
@@ -232,6 +237,7 @@ export function DeviceCard({
               size="sm"
               onClick={() => setDeleteOpen(false)}
               disabled={deleting}
+              className="rounded-xl min-h-[38px]"
             >
               Cancel
             </Button>
@@ -240,8 +246,9 @@ export function DeviceCard({
               size="sm"
               onClick={handleDelete}
               disabled={deleting}
+              className="rounded-xl min-h-[38px]"
             >
-              {deleting ? "Removing..." : "Remove"}
+              {deleting ? "Removing..." : "Remove Device"}
             </Button>
           </DialogFooter>
         </DialogContent>
