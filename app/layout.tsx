@@ -7,23 +7,24 @@ import { DeviceRegistrar } from "@/components/DeviceRegistrar";
 import { ClipboardSyncProvider } from "@/components/providers/ClipboardSyncProvider";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
+import { getAppUrl } from "@/lib/appUrl";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
+  display: "swap",
 });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  display: "swap",
 });
-
-import { getAppUrl } from "@/lib/appUrl";
 
 const appUrl = getAppUrl();
 
 export const viewport: Viewport = {
-  themeColor: "#090d16",
+  themeColor: "#080b11",
   colorScheme: "dark",
   width: "device-width",
   initialScale: 1,
@@ -82,14 +83,30 @@ export default function RootLayout({
     <ClerkProvider>
       <html lang="en" className="dark">
         <body
-          className={`${geistSans.variable} ${geistMono.variable} bg-background text-foreground antialiased min-h-screen flex flex-col`}
+          className={`${geistSans.variable} ${geistMono.variable} bg-background text-foreground antialiased min-h-screen flex flex-col font-sans relative selection:bg-primary/25 selection:text-primary`}
         >
+          {/* Subtle ambient grid pattern for precision utility look */}
+          <div
+            className="pointer-events-none fixed inset-0 z-0 bg-grid-pattern opacity-40"
+            aria-hidden="true"
+          />
+
+          {/* Header & Main Content & Footer */}
           <Header />
-          <div className="flex-1">{children}</div>
+          <div className="relative z-10 flex-1 flex flex-col">{children}</div>
           <Footer />
+
+          {/* Background Services & Notifications */}
           <ClipboardSyncProvider />
           <DeviceRegistrar />
-          <Toaster richColors position="top-center" />
+          <Toaster
+            richColors
+            position="top-center"
+            toastOptions={{
+              className:
+                "!bg-card !border-border !text-foreground !shadow-lg !rounded-xl font-sans text-xs",
+            }}
+          />
         </body>
       </html>
     </ClerkProvider>

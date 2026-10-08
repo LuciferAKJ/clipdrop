@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Show, SignInButton, UserButton } from "@clerk/nextjs";
-import { Menu, X, ArrowUpRight } from "lucide-react";
+import { Menu, X, ArrowUpRight, Radio } from "lucide-react";
 import { useClipboardSyncStatus } from "@/hooks/useClipboardSyncStatus";
 
 export function Header() {
@@ -29,15 +29,15 @@ export function Header() {
   const isDevices = pathname === "/dashboard/devices";
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border/80 bg-background/85 backdrop-blur-md transition-colors">
+    <header className="sticky top-0 z-50 border-b border-border/70 bg-background/80 backdrop-blur-xl transition-all">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
         {/* Brand Logo */}
         <Link
           href="/"
-          className="group flex items-center gap-2.5 outline-none"
+          className="group flex items-center gap-2.5 outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg"
           onClick={() => setMobileMenuOpen(false)}
         >
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm shadow-primary/25 transition-transform group-hover:scale-105">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm shadow-primary/30 transition-transform group-hover:scale-105">
             <svg
               className="h-4 w-4"
               viewBox="0 0 24 24"
@@ -56,7 +56,7 @@ export function Header() {
             <span className="font-heading text-base font-bold tracking-tight text-foreground">
               ClipDrop
             </span>
-            <span className="hidden sm:inline-flex rounded-full border border-border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            <span className="hidden sm:inline-flex rounded-full border border-border/80 bg-secondary/50 px-2 py-0.5 font-mono text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
               transit
             </span>
           </div>
@@ -64,14 +64,14 @@ export function Header() {
 
         {/* Desktop Navigation */}
         <nav
-          className="hidden md:flex items-center gap-1.5"
+          className="hidden md:flex items-center gap-1"
           aria-label="Main Navigation"
         >
           <Link
             href="/"
-            className={`rounded-lg px-3.5 py-2 text-sm font-medium transition-colors ${
+            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
               isHome
-                ? "bg-secondary text-foreground shadow-xs"
+                ? "bg-secondary text-foreground font-semibold shadow-xs"
                 : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
             }`}
           >
@@ -81,9 +81,9 @@ export function Header() {
           <Show when="signed-in">
             <Link
               href="/dashboard"
-              className={`rounded-lg px-3.5 py-2 text-sm font-medium transition-colors ${
+              className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
                 isDashboard
-                  ? "bg-secondary text-foreground shadow-xs"
+                  ? "bg-secondary text-foreground font-semibold shadow-xs"
                   : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
               }`}
             >
@@ -92,9 +92,9 @@ export function Header() {
 
             <Link
               href="/dashboard/devices"
-              className={`rounded-lg px-3.5 py-2 text-sm font-medium transition-colors ${
+              className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
                 isDevices
-                  ? "bg-secondary text-foreground shadow-xs"
+                  ? "bg-secondary text-foreground font-semibold shadow-xs"
                   : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
               }`}
             >
@@ -108,7 +108,7 @@ export function Header() {
           <Show when="signed-in">
             {/* Clipboard sync status indicator */}
             <div
-              className="hidden sm:flex items-center gap-2 rounded-full border border-border/80 bg-secondary/50 px-2.5 py-1 text-xs text-muted-foreground"
+              className="hidden sm:flex items-center gap-2 rounded-full border border-border/80 bg-secondary/40 px-2.5 py-1 text-xs text-muted-foreground"
               title={
                 syncStatus.status === "syncing" ||
                 syncStatus.status === "pushing" ||
@@ -127,12 +127,12 @@ export function Header() {
                     ? "bg-primary animate-pulse"
                     : syncStatus.status === "error"
                       ? "bg-destructive"
-                      : "bg-emerald-500"
+                      : "bg-emerald-400"
                 }`}
               />
-              <span className="text-[11px] font-medium capitalize">
+              <span className="font-mono text-[11px] font-medium capitalize">
                 {syncStatus.status === "idle"
-                  ? "Sync ready"
+                  ? "sync active"
                   : syncStatus.status}
               </span>
             </div>
@@ -141,7 +141,8 @@ export function Header() {
               <UserButton
                 appearance={{
                   elements: {
-                    userButtonAvatarBox: "h-8 w-8 ring-1 ring-border",
+                    userButtonAvatarBox:
+                      "h-8 w-8 ring-1 ring-border/80 rounded-full",
                   },
                 }}
               />
@@ -150,17 +151,17 @@ export function Header() {
 
           <Show when="signed-out">
             <SignInButton mode="modal">
-              <button className="inline-flex h-9 items-center justify-center rounded-lg border border-border bg-card px-3.5 text-sm font-medium text-foreground transition-all hover:bg-secondary active:scale-[0.98]">
+              <button className="inline-flex h-8.5 min-h-[34px] items-center justify-center rounded-lg border border-border/80 bg-card/80 px-3 text-xs font-medium text-foreground transition-all hover:bg-secondary hover:border-border active:scale-[0.985]">
                 Sign In
               </button>
             </SignInButton>
           </Show>
 
-          {/* Mobile Menu Toggle Button (44px min target) */}
+          {/* Mobile Menu Toggle Button (44px min touch target) */}
           <button
             type="button"
             onClick={() => setMobileMenuOpen((prev) => !prev)}
-            className="flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground md:hidden"
+            className="flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground md:hidden transition-colors"
             aria-label="Toggle navigation menu"
             aria-expanded={mobileMenuOpen}
           >
@@ -177,68 +178,72 @@ export function Header() {
       {mobileMenuOpen && (
         <>
           <div
-            className="fixed inset-0 top-16 z-40 bg-black/60 backdrop-blur-xs md:hidden animate-in fade-in duration-200"
+            className="fixed inset-0 top-16 z-40 bg-black/70 backdrop-blur-xs md:hidden animate-in fade-in duration-150"
             onClick={() => setMobileMenuOpen(false)}
             aria-hidden="true"
           />
 
-          <div className="relative z-50 border-t border-border bg-background/95 px-4 py-4 backdrop-blur-xl md:hidden animate-in slide-in-from-top-2 duration-200">
-            <nav className="flex flex-col gap-1" aria-label="Mobile Navigation">
+          <div className="relative z-50 border-t border-border/80 bg-background/95 px-4 py-4 backdrop-blur-2xl md:hidden animate-in slide-in-from-top-2 duration-150 shadow-xl shadow-black/50">
+            <nav
+              className="flex flex-col gap-1.5"
+              aria-label="Mobile Navigation"
+            >
               <Link
                 href="/"
                 onClick={() => setMobileMenuOpen(false)}
-                className={`flex h-11 items-center justify-between rounded-lg px-4 text-sm font-medium transition-colors ${
+                className={`flex h-11 items-center justify-between rounded-xl px-4 text-xs font-medium transition-colors ${
                   isHome
-                    ? "bg-secondary text-foreground"
+                    ? "bg-secondary text-foreground font-semibold"
                     : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
                 }`}
               >
                 <span>Home</span>
-                <ArrowUpRight className="h-4 w-4 opacity-50" />
+                <ArrowUpRight className="h-3.5 w-3.5 opacity-50" />
               </Link>
 
               <Show when="signed-in">
                 <Link
                   href="/dashboard"
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`flex h-11 items-center justify-between rounded-lg px-4 text-sm font-medium transition-colors ${
+                  className={`flex h-11 items-center justify-between rounded-xl px-4 text-xs font-medium transition-colors ${
                     isDashboard
-                      ? "bg-secondary text-foreground"
+                      ? "bg-secondary text-foreground font-semibold"
                       : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
                   }`}
                 >
                   <span>Dashboard</span>
-                  <ArrowUpRight className="h-4 w-4 opacity-50" />
+                  <ArrowUpRight className="h-3.5 w-3.5 opacity-50" />
                 </Link>
 
                 <Link
                   href="/dashboard/devices"
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`flex h-11 items-center justify-between rounded-lg px-4 text-sm font-medium transition-colors ${
+                  className={`flex h-11 items-center justify-between rounded-xl px-4 text-xs font-medium transition-colors ${
                     isDevices
-                      ? "bg-secondary text-foreground"
+                      ? "bg-secondary text-foreground font-semibold"
                       : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
                   }`}
                 >
                   <span>Devices</span>
-                  <ArrowUpRight className="h-4 w-4 opacity-50" />
+                  <ArrowUpRight className="h-3.5 w-3.5 opacity-50" />
                 </Link>
 
-                <div className="mt-2 flex items-center justify-between border-t border-border/80 pt-3 px-2">
-                  <span className="text-xs text-muted-foreground">
+                <div className="mt-2 flex items-center justify-between border-t border-border/70 pt-3 px-3">
+                  <span className="text-xs text-muted-foreground flex items-center gap-1.5">
+                    <Radio className="h-3 w-3 text-muted-foreground" />
                     Sync status
                   </span>
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 font-mono">
                     <span
                       className={`h-2 w-2 rounded-full ${
                         syncStatus.status === "error"
                           ? "bg-destructive"
                           : syncStatus.status === "idle"
-                            ? "bg-emerald-500"
+                            ? "bg-emerald-400"
                             : "bg-primary animate-pulse"
                       }`}
                     />
-                    <span className="text-xs font-medium capitalize text-foreground">
+                    <span className="text-[11px] font-medium capitalize text-foreground">
                       {syncStatus.status}
                     </span>
                   </div>
