@@ -11,6 +11,8 @@
     "test:unit": "vitest run tests/unit tests/hooks tests/components tests/api",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "test:e2e:public": "playwright test --project=public",
+    "test:e2e:authenticated": "playwright test --project=authenticated",
     "test:coverage": "vitest run --coverage",
     "prepare": "husky",
     "postinstall": "prisma generate"

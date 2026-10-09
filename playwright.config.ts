@@ -1,4 +1,7 @@
 import { defineConfig } from "@playwright/test";
+import fs from "fs";
+
+const authFile = "e2e/.auth/user.json";
 
 export default defineConfig({
   testDir: "./e2e",
@@ -13,13 +16,17 @@ export default defineConfig({
   },
 
   webServer: {
-    command: "npm run build && npm run start",
+    command: "npm run start",
     port: 3000,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },
 
   projects: [
+    {
+      name: "public",
+      testMatch: /public-smoke\.spec\.ts/,
+    },
     {
       name: "setup",
       testMatch: /auth\.setup\.ts/,
@@ -30,7 +37,7 @@ export default defineConfig({
         /(upload-and-share|device-management|clipboard-sync|offline-recovery)\.spec\.ts/,
       dependencies: ["setup"],
       use: {
-        storageState: "e2e/.auth/user.json",
+        storageState: fs.existsSync(authFile) ? authFile : undefined,
       },
     },
   ],

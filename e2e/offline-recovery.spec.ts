@@ -1,5 +1,12 @@
 import { test, expect } from "@playwright/test";
 
+test.beforeEach(async () => {
+  test.skip(
+    !process.env.E2E_TEST_EMAIL || !process.env.E2E_TEST_PASSWORD,
+    "Authenticated E2E test requires E2E_TEST_EMAIL and E2E_TEST_PASSWORD to be configured.",
+  );
+});
+
 test("clipboard sync resumes after a network interruption", async ({
   browser,
 }) => {

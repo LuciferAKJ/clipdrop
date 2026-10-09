@@ -1,6 +1,13 @@
 import { test, expect } from "@playwright/test";
 import path from "path";
 
+test.beforeEach(async () => {
+  test.skip(
+    !process.env.E2E_TEST_EMAIL || !process.env.E2E_TEST_PASSWORD,
+    "Authenticated E2E test requires E2E_TEST_EMAIL and E2E_TEST_PASSWORD to be configured.",
+  );
+});
+
 test("sign in, upload a file, create a share, download it", async ({
   page,
 }) => {
