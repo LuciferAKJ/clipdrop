@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { generateUniqueCode } from "@/lib/codeGen";
-import { validateTextShare, validateFile } from "@/lib/validation";
+import {
+  validateTextShare,
+  validateFile,
+  UploadValidationError,
+} from "@/lib/validation";
 import { uploadToCloudinary, deleteFromCloudinary } from "@/lib/cloudinary";
 import { hashPassword } from "@/lib/password";
 import { auth } from "@clerk/nextjs/server";
@@ -65,19 +69,31 @@ export async function POST(req: NextRequest) {
     if (type.includes("multipart/form-data")) {
       const formData = await req.formData();
 
-      const files = formData.getAll("files") as File[];
+      const rawFiles = formData.getAll("files");
+      if (!rawFiles.every((value): value is File => value instanceof File)) {
+        throw new UploadValidationError("Invalid file upload");
+      }
+      const files = rawFiles;
 
       logger.debug("Files received for upload", {
         count: files.length,
       });
 
-      const text = formData.get("text") as string | null;
-      const password = formData.get("password") as string | null;
+      const rawText = formData.get("text");
+      const rawPassword = formData.get("password");
+      if (rawText !== null && typeof rawText !== "string") {
+        throw new UploadValidationError("Invalid text field");
+      }
+      if (rawPassword !== null && typeof rawPassword !== "string") {
+        throw new UploadValidationError("Invalid password field");
+      }
+      const text = rawText;
+      const password = rawPassword;
       const oneTimeUse = formData.get("oneTimeUse") === "true";
       const downloadLimitRaw = formData.get("downloadLimit") as string | null;
       const expiryRaw = formData.get("expiry") as string | null;
 
-      if (expiryRaw && !(expiryRaw in EXPIRY_OPTIONS)) {
+      if (expiryRaw && !Object.hasOwn(EXPIRY_OPTIONS, expiryRaw)) {
         return NextResponse.json({ error: "Invalid expiry" }, { status: 400 });
       }
 
@@ -104,7 +120,7 @@ export async function POST(req: NextRequest) {
       const passwordHash = password ? await hashPassword(password) : null;
 
       if (!files.length && !text) {
-        throw new Error("Nothing uploaded");
+        throw new UploadValidationError("Nothing uploaded");
       }
 
       if (text) {
@@ -200,13 +216,16 @@ export async function POST(req: NextRequest) {
     // TEXT ONLY JSON UPLOAD
     // =========================
 
-    const body = await req.json();
+    const body = await req.json().catch(() => null);
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      throw new UploadValidationError("Invalid request body");
+    }
 
     const { text, password, oneTimeUse, downloadLimit, expiry } = body;
 
     validateTextShare(text);
 
-    if (expiry && !(expiry in EXPIRY_OPTIONS)) {
+    if (expiry && !Object.hasOwn(EXPIRY_OPTIONS, expiry)) {
       return NextResponse.json({ error: "Invalid expiry" }, { status: 400 });
     }
 
@@ -251,11 +270,14 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ code: share.code }, { status: 201 });
   } catch (error) {
-    logger.error("Upload error", error);
+    if (error instanceof UploadValidationError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
 
+    logger.error("Upload failed due to an unexpected server error", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Upload failed" },
-      { status: 400 },
+      { error: "Upload failed. Please try again." },
+      { status: 500 },
     );
   }
 }
