@@ -100,4 +100,20 @@ describe("lib/cloudinary hardening", () => {
       type: "upload",
     });
   });
+  it("treats an already-missing Cloudinary asset as an idempotent success", async () => {
+    mockDestroy.mockResolvedValue({ result: "not found" });
+
+    await expect(
+      deleteFromCloudinary("clipdrop/already-missing", "application/pdf"),
+    ).resolves.toBeUndefined();
+  });
+
+  it("rejects ambiguous Cloudinary deletion responses", async () => {
+    mockDestroy.mockResolvedValue({ result: "error" });
+
+    await expect(
+      deleteFromCloudinary("clipdrop/not-confirmed", "application/pdf"),
+    ).rejects.toThrow("Cloudinary did not confirm asset deletion");
+  });
+
 });
