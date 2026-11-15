@@ -73,7 +73,7 @@ describe("lib/ipHash & rate limiting spoofing protections", () => {
     const previousMode = process.env.NODE_ENV;
     try {
       process.env.IP_HASH_PEPPER = "too-short";
-      process.env.NODE_ENV = "production";
+      (process.env as any).NODE_ENV = "production";
       expect(() => hashIp("203.0.113.10")).toThrow(
         "IP_HASH_PEPPER must be configured in production with at least 32 characters",
       );
