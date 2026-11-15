@@ -22,6 +22,10 @@ import { auth } from "@clerk/nextjs/server";
 function makePutReq(body: unknown) {
   return new NextRequest("http://localhost/api/clipboard", {
     method: "PUT",
+    headers: {
+      host: "localhost",
+      origin: "http://localhost",
+    },
     body: JSON.stringify(body),
   });
 }
