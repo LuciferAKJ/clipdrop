@@ -3,8 +3,9 @@ import { NextRequest } from "next/server";
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
-    $queryRaw: vi.fn().mockResolvedValue([{ count: 1 }]),
     rateLimitBucket: {
+      createMany: vi.fn().mockResolvedValue({ count: 1 }),
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
       deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
     },
     share: {
@@ -58,11 +59,15 @@ function makeUploadReq(formData: FormData, ip = "198.51.100.11") {
 describe("Upload Pre-validation & Rollback (app/api/upload)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (prisma.share.count as any).mockResolvedValue(0); // rate limiting passes
+    (prisma.share.count as any).mockResolvedValue(0);
+    (prisma.rateLimitBucket.createMany as any).mockResolvedValue({ count: 1 });
+    (prisma.rateLimitBucket.updateMany as any).mockResolvedValue({ count: 1 });
   });
 
   it("returns 429 when the shared upload rate limit is exhausted", async () => {
-    (prisma.$queryRaw as any).mockResolvedValueOnce([]);
+    (prisma.rateLimitBucket.updateMany as any)
+      .mockResolvedValueOnce({ count: 0 })
+      .mockResolvedValueOnce({ count: 0 });
 
     const res = await POST(makeUploadReq(new FormData(), "198.51.100.19"));
 
