@@ -4,6 +4,11 @@ import { prisma } from "@/lib/prisma";
 import { validateDeviceRegistration } from "@/lib/validation";
 import { unauthorized, badRequest, ok } from "@/lib/apiResponses";
 import { logger } from "@/lib/logger";
+import {
+  RATE_LIMIT_DEVICE_MAX,
+  RATE_LIMIT_WINDOW_MS,
+} from "@/lib/constants";
+import { consumeRateLimit, RateLimitError } from "@/lib/rateLimit";
 
 export async function GET() {
   const { userId } = await auth();
@@ -20,6 +25,20 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const { userId } = await auth();
   if (!userId) return unauthorized();
+
+  try {
+    await consumeRateLimit(
+      `device-register:${userId}`,
+      RATE_LIMIT_DEVICE_MAX,
+      RATE_LIMIT_WINDOW_MS,
+      "Too many device registration requests. Please try again in a minute.",
+    );
+  } catch (error) {
+    if (error instanceof RateLimitError) {
+      return badRequest(error.message);
+    }
+    throw error;
+  }
 
   const body = await req.json().catch(() => null);
   if (!body) return badRequest("Invalid request body");
