@@ -9,11 +9,11 @@ export function isSameOriginRequest(req: NextRequest): boolean {
   const origin = req.headers.get("origin");
   if (!origin) return true;
 
-  const host = req.headers.get("host");
-  if (!host) return false;
-
   try {
-    return new URL(origin).host.toLowerCase() === host.toLowerCase();
+    // Compare scheme + host + port. A host-only check accepts a cross-scheme
+    // Origin such as http://host against an https page.
+    return new URL(origin).origin.toLowerCase() ===
+      new URL(req.url).origin.toLowerCase();
   } catch {
     return false;
   }
