@@ -123,10 +123,10 @@ export async function POST(
   }
 
   // Password verification with brute-force rate limiting
-  const passwordRateKey = `pwd-fail:${ipHash}:${share.id}`;
+  const authAttemptKey = `auth-fail:${ipHash}:${share.id}`;
   if (share.passwordHash) {
     try {
-      await checkPasswordRateLimit(passwordRateKey, 5);
+      await checkPasswordRateLimit(authAttemptKey, 5);
     } catch (error) {
       if (error instanceof RateLimitError) {
         return NextResponse.json({ error: error.message }, { status: 429 });
@@ -142,7 +142,7 @@ export async function POST(
     }
 
     // Clear failed attempts on successful password entry
-    await clearPasswordAttempts(passwordRateKey);
+    await clearPasswordAttempts(authAttemptKey);
   }
 
   // Atomic download-limit and consumption enforcement
