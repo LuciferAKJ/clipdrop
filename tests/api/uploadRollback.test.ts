@@ -57,6 +57,19 @@ describe("Upload Pre-validation & Rollback (app/api/upload)", () => {
     (prisma.share.count as any).mockResolvedValue(0); // rate limiting passes
   });
 
+  it("returns 429 when the shared upload rate limit is exhausted", async () => {
+    (prisma.$queryRaw as any).mockResolvedValueOnce([]);
+
+    const res = await POST(makeUploadReq(new FormData(), "198.51.100.19"));
+
+    expect(res.status).toBe(429);
+    expect(await res.json()).toMatchObject({
+      error: expect.stringContaining("Too many uploads"),
+    });
+    expect(prisma.share.create).not.toHaveBeenCalled();
+    expect(uploadToCloudinary).not.toHaveBeenCalled();
+  });
+
   it("F. multi-file upload rejects upfront if any file fails validation without touching Cloudinary or DB", async () => {
     const validFile = new File([new Uint8Array(VALID_PNG_BYTES)], "photo.png", {
       type: "image/png",
