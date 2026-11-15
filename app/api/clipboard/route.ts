@@ -3,11 +3,29 @@ import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { validateClipboardSync } from "@/lib/validation";
 import type { ClipboardState } from "@/lib/types/clipboard";
+import {
+  RATE_LIMIT_CLIPBOARD_MAX,
+  RATE_LIMIT_WINDOW_MS,
+} from "@/lib/constants";
+import { consumeRateLimit, RateLimitError } from "@/lib/rateLimit";
 
 export async function GET() {
   const { userId } = await auth();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    await consumeRateLimit(
+      `clipboard-read:${userId}`,
+      RATE_LIMIT_CLIPBOARD_MAX,
+      RATE_LIMIT_WINDOW_MS,
+    );
+  } catch (error) {
+    if (error instanceof RateLimitError) {
+      return NextResponse.json({ error: error.message }, { status: 429 });
+    }
+    throw error;
   }
 
   const sync = await prisma.clipboardSync.findUnique({ where: { userId } });
@@ -30,6 +48,19 @@ export async function PUT(req: NextRequest) {
   const { userId } = await auth();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    await consumeRateLimit(
+      `clipboard-write:${userId}`,
+      RATE_LIMIT_CLIPBOARD_MAX,
+      RATE_LIMIT_WINDOW_MS,
+    );
+  } catch (error) {
+    if (error instanceof RateLimitError) {
+      return NextResponse.json({ error: error.message }, { status: 429 });
+    }
+    throw error;
   }
 
   const body = await req.json().catch(() => null);
