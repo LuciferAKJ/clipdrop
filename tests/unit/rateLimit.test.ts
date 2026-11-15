@@ -90,8 +90,8 @@ describe("Shared PostgreSQL rate limiting", () => {
     );
 
     const results = await Promise.allSettled(
-      Array.from({ length: 12 }, (_, index) =>
-        consumeRateLimit(`concurrent-client-${index}`, max, 60_000),
+      Array.from({ length: 12 }, () =>
+        consumeRateLimit("concurrent-client", max, 60_000),
       ),
     );
 
