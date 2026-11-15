@@ -22,15 +22,15 @@ All secrets and configuration parameters must be set in the deployment platform 
 
 | Variable Name                       | Required Scope         | Purpose / Description                                                                  |
 | ----------------------------------- | ---------------------- | -------------------------------------------------------------------------------------- |
-| `DATABASE_URL`                      | Build & Runtime        | Connection pooled PostgreSQL connection string for Prisma.                             |
-| `CI_DATABASE_URL`                   | CI / E2E Testing Only  | Dedicated Neon test-branch PostgreSQL URL used by the public Playwright smoke suite. Never point this at production. |
+| `DATABASE_URL`                      | Runtime                | Pooled Neon PostgreSQL connection string used by Prisma Client in Vercel/serverless traffic. |
+| `DIRECT_URL`                         | Prisma CLI / Migrations| Direct, non-pooled Neon connection string used by Prisma Migrate. Keep separate from the pooled runtime URL. |\n| `CI_DATABASE_URL`                   | CI / E2E Testing Only  | Pooled connection string for the dedicated Neon CI test branch, used by tests and Playwright. Never point this at production. |\n| `CI_DIRECT_URL`                     | CI / Migration Only    | Direct, non-pooled connection string to the same dedicated Neon test branch, used only by `prisma migrate deploy`. |\n| `CI_IP_HASH_PEPPER`                 | GitHub Actions Only    | Random CI HMAC key, at least 32 characters; separate from the production pepper. |
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Build & Client Runtime | Clerk public publishable frontend API key (`pk_...`).                                  |
 | `CLERK_SECRET_KEY`                  | Server Runtime         | Clerk backend private secret key (`sk_...`).                                           |
 | `CLERK_WEBHOOK_SECRET`              | Server Runtime         | Svix webhook signing secret for verifying Clerk user event webhooks (`whsec_...`).     |
 | `CLOUDINARY_CLOUD_NAME`             | Server Runtime         | Cloudinary cloud account name.                                                         |
 | `CLOUDINARY_API_KEY`                | Server Runtime         | Cloudinary REST API public key identifier.                                             |
 | `CLOUDINARY_API_SECRET`             | Server Runtime         | Cloudinary REST API private signing secret.                                            |
-| `IP_HASH_PEPPER`                    | Server Runtime         | Secret high-entropy string used to salt anonymized client IP hashes for rate limiting. |
+| `IP_HASH_PEPPER`                    | Server Runtime         | Random HMAC-SHA-256 key of at least 32 characters for client-IP rate-limit identifiers. |
 | `CRON_SECRET`                       | Server Runtime         | Secret bearer token required to authenticate requests to `/api/cron/cleanup`.          |
 | `NEXT_PUBLIC_APP_URL`               | Build & Client Runtime | Public domain canonical URL (e.g., `https://clipdrop.yourdomain.com`).                 |
 | `E2E_TEST_EMAIL`                    | CI / Testing Only      | Dedicated test account email for running authenticated Playwright E2E suites in CI.    |
@@ -116,7 +116,7 @@ git push origin main
    curl -X GET "https://<app-domain>/api/cron/cleanup" \
      -H "Authorization: Bearer <CRON_SECRET>"
    ```
-   Expected response: `200 OK` with JSON containing `deletedShares`, `deletedFiles`, `failedShares`, `batchCandidates`, and `durationMs`.
+   Expected response: `200 OK` with JSON containing `deletedShares`, `deletedFiles`, `failedShares`, `deletedRateLimitBuckets`, `batchCandidates`, and `durationMs`.
 
 ---
 
@@ -170,7 +170,7 @@ Structured JSON logs are emitted via `lib/logger.ts` and captured by Vercel Runt
 - Request counters are stored in the PostgreSQL `RateLimitBucket` table, not process-local memory.
 - A single atomic `INSERT .. ON CONFLICT .. RETURNING` statement performs bucket creation, reset, and increment safely across serverless instances.
 - Client IP identifiers use HMAC-SHA-256 with `IP_HASH_PEPPER`; bucket keys are hashed again before storage. Never log raw IP addresses or expose the pepper.
-- Production must have a randomly generated `IP_HASH_PEPPER` of at least 32 characters. The application intentionally fails closed if it is missing.
+- Production must have a randomly generated `IP_HASH_PEPPER` of at least 32 characters. The application intentionally fails closed if it is missing. Use a different value for CI.
 - The daily cleanup endpoint removes up to 1,000 expired buckets per run. Monitor the cleanup response and increase the dedicated batch size if the expired-bucket backlog grows.
 
 ### Dependency & Security Alert Review
@@ -187,7 +187,13 @@ Structured JSON logs are emitted via `lib/logger.ts` and captured by Vercel Runt
 
 ## 10. Configuring Authenticated CI E2E Tests
 
-To run the public Playwright smoke suite in GitHub Actions, configure `CI_DATABASE_URL` as a repository Actions secret pointing to a dedicated Neon test branch. The workflow applies the checked-in migrations to that database before browser tests. Do not point this secret at production. To enable the authenticated Playwright suite as well:
+To run the public Playwright smoke suite in GitHub Actions, configure these repository Actions secrets, all for the same dedicated Neon test branch:
+
+- `CI_DATABASE_URL`: pooled endpoint (Neon hostname contains `-pooler`), used by Prisma Client during tests.
+- `CI_DIRECT_URL`: direct endpoint (no `-pooler`), used by Prisma CLI to apply migrations.
+- `CI_IP_HASH_PEPPER`: a random value with at least 32 characters, different from the production pepper.
+
+The workflow validates these secrets before migration and never uses the production database. Do not point either CI database secret at production. To enable the authenticated Playwright suite as well:
 
 1. Navigate to **GitHub Repository** > **Settings** > **Secrets and variables** > **Actions**.
 2. Add the following repository secrets:
