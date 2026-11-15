@@ -7,8 +7,9 @@ import { NextRequest } from "next/server";
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
-    $queryRaw: vi.fn().mockResolvedValue([{ count: 1 }]),
     rateLimitBucket: {
+      createMany: vi.fn().mockResolvedValue({ count: 1 }),
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
       deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
     },
     share: {
