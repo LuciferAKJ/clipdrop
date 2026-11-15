@@ -31,8 +31,20 @@ jobs:
       - name: Run type checking
         run: npx tsc --noEmit
 
-      - name: Run unit tests
-        run: npm run test
+      - name: Run coverage
+        run: npm run test:coverage
+        env:
+          # Coverage run needs the same env shape as local dev for any
+          # module that reads process.env at import time (e.g. Clerk,
+          # Prisma). Add repo secrets here if tests fail on missing env.
+          DATABASE_URL: ${{ secrets.CI_DATABASE_URL || 'postgresql://ci:ci@localhost:5432/clipdrop' }}
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+          CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+          CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
+          CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
+          IP_HASH_PEPPER: ${{ secrets.CI_IP_HASH_PEPPER }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
 
       - name: Validate dedicated E2E database URL
         if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.actor != 'dependabot[bot]' && github.event.pull_request.head.repo.full_name == github.repository)
@@ -40,7 +52,7 @@ jobs:
         env:
           CI_DATABASE_URL: ${{ secrets.CI_DATABASE_URL }}
           CI_DIRECT_URL: ${{ secrets.CI_DIRECT_URL }}
-          CI_IP_HASH_PEPPER: ${{ secrets.CI_IP_HASH_PEPPER || secrets.IP_HASH_PEPPER }}
+          CI_IP_HASH_PEPPER: ${{ secrets.CI_IP_HASH_PEPPER }}
         run: |
           if [[ -z "$CI_DATABASE_URL" ]]; then
             echo "::error::Add CI_DATABASE_URL (pooled Neon test-branch URL) in Settings > Secrets and variables > Actions."
@@ -63,21 +75,6 @@ jobs:
             exit 1
           fi
 
-      - name: Run coverage
-        run: npm run test:coverage
-        env:
-          # Coverage run needs the same env shape as local dev for any
-          # module that reads process.env at import time (e.g. Clerk,
-          # Prisma). Add repo secrets here if tests fail on missing env.
-          DATABASE_URL: ${{ secrets.CI_DATABASE_URL || 'postgresql://ci:ci@localhost:5432/clipdrop' }}
-          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
-          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
-          CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
-          CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
-          CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
-          IP_HASH_PEPPER: ${{ secrets.CI_IP_HASH_PEPPER || secrets.IP_HASH_PEPPER }}
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
-
       - name: Run production build
         run: npm run build
         env:
@@ -87,7 +84,7 @@ jobs:
           CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
           CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
           CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
-          IP_HASH_PEPPER: ${{ secrets.CI_IP_HASH_PEPPER || secrets.IP_HASH_PEPPER }}
+          IP_HASH_PEPPER: ${{ secrets.CI_IP_HASH_PEPPER }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
 
       - name: Install Playwright Browsers
@@ -110,5 +107,5 @@ jobs:
           CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
           CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
           CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
-          IP_HASH_PEPPER: ${{ secrets.CI_IP_HASH_PEPPER || secrets.IP_HASH_PEPPER }}
+          IP_HASH_PEPPER: ${{ secrets.CI_IP_HASH_PEPPER }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
