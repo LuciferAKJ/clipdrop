@@ -22,15 +22,18 @@ All secrets and configuration parameters must be set in the deployment platform 
 
 | Variable Name                       | Required Scope         | Purpose / Description                                                                  |
 | ----------------------------------- | ---------------------- | -------------------------------------------------------------------------------------- |
-| `DATABASE_URL`                      | Build & Runtime        | Connection pooled PostgreSQL connection string for Prisma.                             |
-| `DIRECT_URL`                        | Build & Migration      | Direct PostgreSQL connection string for Prisma migrations/schema engines.              |
+| `DATABASE_URL`                      | Runtime                | Pooled Neon PostgreSQL connection string used by Prisma Client in Vercel/serverless traffic. |
+| `DIRECT_URL`                         | Prisma CLI / Migrations| Direct, non-pooled Neon connection string used by Prisma Migrate. Keep separate from the pooled runtime URL. |
+| `CI_DATABASE_URL`                   | CI / E2E Testing Only  | Pooled connection string for the dedicated Neon CI test branch, used by tests and Playwright. Never point this at production. |
+| `CI_DIRECT_URL`                     | CI / Migration Only    | Direct, non-pooled connection string to the same dedicated Neon test branch, used only by `prisma migrate deploy`. |
+| `CI_IP_HASH_PEPPER`                 | GitHub Actions Only    | Random CI HMAC key, at least 32 characters; separate from the production pepper. |
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Build & Client Runtime | Clerk public publishable frontend API key (`pk_...`).                                  |
 | `CLERK_SECRET_KEY`                  | Server Runtime         | Clerk backend private secret key (`sk_...`).                                           |
 | `CLERK_WEBHOOK_SECRET`              | Server Runtime         | Svix webhook signing secret for verifying Clerk user event webhooks (`whsec_...`).     |
 | `CLOUDINARY_CLOUD_NAME`             | Server Runtime         | Cloudinary cloud account name.                                                         |
 | `CLOUDINARY_API_KEY`                | Server Runtime         | Cloudinary REST API public key identifier.                                             |
 | `CLOUDINARY_API_SECRET`             | Server Runtime         | Cloudinary REST API private signing secret.                                            |
-| `IP_HASH_PEPPER`                    | Server Runtime         | Secret high-entropy string used to salt anonymized client IP hashes for rate limiting. |
+| `IP_HASH_PEPPER`                    | Server Runtime         | Random HMAC-SHA-256 key of at least 32 characters for client-IP rate-limit identifiers. |
 | `CRON_SECRET`                       | Server Runtime         | Secret bearer token required to authenticate requests to `/api/cron/cleanup`.          |
 | `NEXT_PUBLIC_APP_URL`               | Build & Client Runtime | Public domain canonical URL (e.g., `https://clipdrop.yourdomain.com`).                 |
 | `E2E_TEST_EMAIL`                    | CI / Testing Only      | Dedicated test account email for running authenticated Playwright E2E suites in CI.    |
@@ -100,8 +103,8 @@ git push origin main
 - The endpoint performs:
   1. Identification of shares where `expiresAt < now()`, or `consumedAt IS NOT NULL`, or `downloadCount >= downloadLimit`.
   2. Cloudinary asset removal for all attached files in batch.
-  3. Cascading database deletion of expired `Share` and `File` records.
-  4. Cleanup of orphaned device registrations (`lastSeenAt > 30 days`).
+  3. Delete the `Share` record only after Cloudinary confirms all attached assets are deleted; related `File` rows are removed by the database cascade.
+  4. Preserve the `Share` and `File` rows when an asset deletion fails so the next scheduled run can retry.
 
 ### Investigating Cleanup Failures
 
@@ -116,7 +119,7 @@ git push origin main
    curl -X GET "https://<app-domain>/api/cron/cleanup" \
      -H "Authorization: Bearer <CRON_SECRET>"
    ```
-   Expected response: `200 OK` with JSON `{ "deletedShares": N, "deletedFiles": M, "deletedDevices": D }`.
+   Expected response: `200 OK` with JSON containing `deletedShares`, `deletedFiles`, `failedShares`, `deletedRateLimitBuckets`, `batchCandidates`, and `durationMs`.
 
 ---
 
@@ -163,7 +166,17 @@ Structured JSON logs are emitted via `lib/logger.ts` and captured by Vercel Runt
 
 ---
 
-## 9. Dependency & Security Alert Review
+## 9. Rate Limiting & Dependency Security
+
+### Shared Rate-Limit Storage
+
+- Request counters are stored in the PostgreSQL `RateLimitBucket` table, not process-local memory.
+- Prisma `createMany(skipDuplicates)` initializes a bucket, then conditional `updateMany` operations reset expired windows and increment only while `count < max`. PostgreSQL evaluates each conditional update atomically across serverless instances.
+- Client IP identifiers use HMAC-SHA-256 with `IP_HASH_PEPPER`; bucket keys are hashed again before storage. Never log raw IP addresses or expose the pepper.
+- Production must have a randomly generated `IP_HASH_PEPPER` of at least 32 characters. The application intentionally fails closed if it is missing. Use a different value for CI.
+- The daily cleanup endpoint removes up to 1,000 expired buckets per run. Monitor the cleanup response and increase the dedicated batch size if the expired-bucket backlog grows.
+
+### Dependency & Security Alert Review
 
 1. Review Dependabot and GitHub Security Advisories weekly:
    - Development CLI tooling advisories (e.g., `shadcn`, `prisma` CLI parser) do NOT impact runtime production safety.
@@ -177,7 +190,13 @@ Structured JSON logs are emitted via `lib/logger.ts` and captured by Vercel Runt
 
 ## 10. Configuring Authenticated CI E2E Tests
 
-To enable the full authenticated Playwright test suite in GitHub Actions:
+To run the public Playwright smoke suite in GitHub Actions, configure these repository Actions secrets, all for the same dedicated Neon test branch:
+
+- `CI_DATABASE_URL`: pooled endpoint (Neon hostname contains `-pooler`), used by Prisma Client during tests.
+- `CI_DIRECT_URL`: direct endpoint (no `-pooler`), used by Prisma CLI to apply migrations.
+- `CI_IP_HASH_PEPPER`: a random value with at least 32 characters, different from the production pepper.
+
+The workflow validates these secrets before migration and never uses the production database. Do not point either CI database secret at production. To enable the authenticated Playwright suite as well:
 
 1. Navigate to **GitHub Repository** > **Settings** > **Secrets and variables** > **Actions**.
 2. Add the following repository secrets:

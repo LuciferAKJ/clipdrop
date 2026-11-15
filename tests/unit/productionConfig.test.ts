@@ -8,6 +8,11 @@ import { prisma } from "@/lib/prisma";
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
+    rateLimitBucket: {
+      createMany: vi.fn().mockResolvedValue({ count: 1 }),
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+      deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+    },
     share: {
       create: vi.fn(),
       delete: vi.fn(),
@@ -117,6 +122,7 @@ describe("Batch 6: Production Security Configuration", () => {
       formData.append("text", "hello world");
 
       const req = {
+        url: "https://clipdrop.net/api/upload",
         headers: new Headers({
           "content-type": "multipart/form-data",
           host: "clipdrop.net",
@@ -142,6 +148,7 @@ describe("Batch 6: Production Security Configuration", () => {
       });
 
       const req = {
+        url: "https://clipdrop.net/api/upload",
         headers: new Headers({
           "content-type": "multipart/form-data",
           host: "clipdrop.net",
@@ -156,6 +163,7 @@ describe("Batch 6: Production Security Configuration", () => {
 
     it("E & F. State-changing dashboard delete rejects cross-origin request", async () => {
       const req = {
+        url: "https://clipdrop.net/api/dashboard/delete",
         headers: new Headers({
           host: "clipdrop.net",
           origin: "https://evil-attacker.com",

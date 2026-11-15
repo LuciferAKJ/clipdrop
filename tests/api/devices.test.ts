@@ -3,6 +3,11 @@ import { NextRequest } from "next/server";
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
+    rateLimitBucket: {
+      createMany: vi.fn().mockResolvedValue({ count: 1 }),
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+      deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+    },
     device: { findMany: vi.fn(), upsert: vi.fn() },
   },
 }));
@@ -17,6 +22,10 @@ import { auth } from "@clerk/nextjs/server";
 function makePostReq(body: unknown) {
   return new NextRequest("http://localhost/api/devices", {
     method: "POST",
+    headers: {
+      host: "localhost",
+      origin: "http://localhost",
+    },
     body: JSON.stringify(body),
   });
 }

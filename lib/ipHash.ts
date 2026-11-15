@@ -1,4 +1,4 @@
-import { createHash } from "crypto";
+import { createHmac } from "crypto";
 import { NextRequest } from "next/server";
 
 export function getClientIp(req: NextRequest): string {
@@ -22,24 +22,27 @@ export function getClientIp(req: NextRequest): string {
     return req.ip.trim();
   }
 
-  // 4. x-forwarded-for fallback
-  const forwarded = req.headers.get("x-forwarded-for");
-  if (forwarded) {
-    const ips = forwarded
-      .split(",")
-      .map((ip) => ip.trim())
-      .filter(Boolean);
-    if (ips.length > 0) {
-      return ips[0];
-    }
-  }
-
+  // Do not trust x-forwarded-for directly: clients can supply this header
+  // when the app is reached outside a trusted proxy chain. Unknown requests
+  // share a single fail-closed bucket rather than gaining a spoofable identity.
   return "unknown";
 }
 
 export function hashIp(ip: string): string {
-  const pepper = process.env.IP_HASH_PEPPER || "";
-  return createHash("sha256")
-    .update(ip + pepper)
-    .digest("hex");
+  const pepper = process.env.IP_HASH_PEPPER?.trim();
+
+  if (
+    process.env.NODE_ENV === "production" &&
+    (!pepper || pepper.length < 32)
+  ) {
+    throw new Error(
+      "IP_HASH_PEPPER must be configured in production with at least 32 characters",
+    );
+  }
+
+  // A fixed development-only key keeps local tests deterministic. Production
+  // requests must use a separately generated secret from the deployment's
+  // environment; HMAC prevents straightforward offline IP dictionary checks.
+  const key = pepper || "clipdrop-local-development-only-ip-hash-key";
+  return createHmac("sha256", key).update(ip, "utf8").digest("hex");
 }

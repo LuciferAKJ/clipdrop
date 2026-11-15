@@ -7,6 +7,12 @@ vi.mock("@/lib/prisma", () => ({
       findMany: vi.fn(),
       delete: vi.fn(),
     },
+    rateLimitBucket: {
+      findMany: vi.fn().mockResolvedValue([]),
+      createMany: vi.fn().mockResolvedValue({ count: 0 }),
+      updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+      deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+    },
   },
 }));
 
@@ -26,7 +32,10 @@ vi.mock("@/lib/logger", () => ({
 import { GET, verifyCronSecret } from "@/app/api/cron/cleanup/route";
 import { prisma } from "@/lib/prisma";
 import { deleteFromCloudinary } from "@/lib/cloudinary";
-import { CLEANUP_BATCH_SIZE } from "@/lib/constants";
+import {
+  CLEANUP_BATCH_SIZE,
+  RATE_LIMIT_CLEANUP_BATCH_SIZE,
+} from "@/lib/constants";
 
 function makeReq(authHeader?: string) {
   return new NextRequest("http://localhost/api/cron/cleanup", {
@@ -408,6 +417,32 @@ describe("Cron Cleanup Hardening (app/api/cron/cleanup/route.ts)", () => {
       });
       expect(prisma.share.delete).toHaveBeenCalledWith({
         where: { id: "share-file-ok" },
+      });
+    });
+
+    it("Q. Prunes expired rate-limit buckets in bounded batches", async () => {
+      (prisma.share.findMany as any).mockResolvedValue([]);
+      (prisma.rateLimitBucket.findMany as any).mockResolvedValue([
+        { key: "expired-bucket-1" },
+        { key: "expired-bucket-2" },
+      ]);
+      (prisma.rateLimitBucket.deleteMany as any).mockResolvedValue({ count: 2 });
+
+      const res = await GET(makeReq("Bearer cron-test-secret"));
+      const json = await res.json();
+
+      expect(json.deletedRateLimitBuckets).toBe(2);
+      expect(prisma.rateLimitBucket.findMany).toHaveBeenCalledWith({
+        where: { resetAt: { lt: expect.any(Date) } },
+        select: { key: true },
+        orderBy: { resetAt: "asc" },
+        take: RATE_LIMIT_CLEANUP_BATCH_SIZE,
+      });
+      expect(prisma.rateLimitBucket.deleteMany).toHaveBeenCalledWith({
+        where: {
+          key: { in: ["expired-bucket-1", "expired-bucket-2"] },
+          resetAt: { lt: expect.any(Date) },
+        },
       });
     });
 

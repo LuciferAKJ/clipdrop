@@ -1,8 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { createHash } from "crypto";
 import { NextRequest } from "next/server";
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
+    rateLimitBucket: {
+      createMany: vi.fn().mockResolvedValue({ count: 1 }),
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+      deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+    },
     share: {
       findUnique: vi.fn(),
       updateMany: vi.fn(),
@@ -13,6 +19,7 @@ vi.mock("@/lib/prisma", () => ({
 import { GET, POST } from "@/app/api/share/[code]/route";
 import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/password";
+import { hashIp } from "@/lib/ipHash";
 import { clearPasswordAttempts } from "@/lib/rateLimit";
 
 function makeReq(
@@ -33,6 +40,15 @@ function makeReq(
 describe("Share Concurrency & Limits (app/api/share/[code])", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // The password lockout test installs a custom sequence of PostgreSQL
+    // bucket responses. Restore the shared default between tests so it
+    // cannot leak a simulated "bucket full" into unrelated share tests.
+    (prisma.rateLimitBucket.createMany as any).mockReset();
+    (prisma.rateLimitBucket.createMany as any).mockResolvedValue({ count: 1 });
+    (prisma.rateLimitBucket.updateMany as any).mockReset();
+    (prisma.rateLimitBucket.updateMany as any).mockResolvedValue({ count: 1 });
+    (prisma.rateLimitBucket.deleteMany as any).mockReset();
+    (prisma.rateLimitBucket.deleteMany as any).mockResolvedValue({ count: 0 });
   });
 
   it("A. downloadLimit=1: only exactly 1 concurrent request succeeds, others receive 410", async () => {
@@ -178,7 +194,25 @@ describe("Share Concurrency & Limits (app/api/share/[code])", () => {
     (prisma.share.updateMany as any).mockResolvedValue({ count: 1 });
 
     // Clean any prior state for this test key
-    clearPasswordAttempts(`pwd-fail:${ip}:${shareRecord.id}`);
+    await clearPasswordAttempts(`auth-fail:${hashIp(ip)}:${shareRecord.id}`);
+
+    // Each POST consumes an IP bucket and a password-attempt bucket.
+    // Reset writes return zero when the window is still active. The password
+    // bucket accepts five increments and rejects the sixth atomically.
+    const authAttemptBucketKey = createHash("sha256")
+      .update(`auth-fail:${hashIp(ip)}:${shareRecord.id}`)
+      .digest("hex");
+    let passwordAttemptCount = 0;
+    (prisma.rateLimitBucket.updateMany as any).mockImplementation(
+      async ({ where }: any) => {
+        if (where.resetAt?.lte) return { count: 0 };
+        if (where.key === authAttemptBucketKey && where.count?.lt !== undefined) {
+          passwordAttemptCount++;
+          return { count: passwordAttemptCount <= 5 ? 1 : 0 };
+        }
+        return { count: 1 };
+      },
+    );
 
     // Attempts 1 to 5 with wrong password return 401
     for (let i = 0; i < 5; i++) {
@@ -201,7 +235,7 @@ describe("Share Concurrency & Limits (app/api/share/[code])", () => {
     expect(blockedJson.error).toContain("Too many failed password attempts");
 
     // Clean up
-    clearPasswordAttempts(`pwd-fail:${ip}:${shareRecord.id}`);
+    await clearPasswordAttempts(`auth-fail:${hashIp(ip)}:${shareRecord.id}`);
   }, 15000);
 
   it("GET endpoint reports requiresPassword and oneTimeUse appropriately", async () => {

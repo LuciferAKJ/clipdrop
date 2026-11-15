@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { createHash, timingSafeEqual } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { deleteFromCloudinary } from "@/lib/cloudinary";
-import { CLEANUP_BATCH_SIZE } from "@/lib/constants";
+import {
+  CLEANUP_BATCH_SIZE,
+  RATE_LIMIT_CLEANUP_BATCH_SIZE,
+} from "@/lib/constants";
 import { logger } from "@/lib/logger";
 
 /**
@@ -134,12 +137,42 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // Rate-limit rows are shared across serverless instances. Prune only a
+  // bounded batch per cron run so a burst of unique clients cannot make
+  // cleanup itself an unbounded database operation.
+  let deletedRateLimitBuckets = 0;
+  try {
+    const expiredBuckets = await prisma.rateLimitBucket.findMany({
+      where: { resetAt: { lt: now } },
+      select: { key: true },
+      orderBy: { resetAt: "asc" },
+      take: RATE_LIMIT_CLEANUP_BATCH_SIZE,
+    });
+
+    if (expiredBuckets.length > 0) {
+      const cleanupResult = await prisma.rateLimitBucket.deleteMany({
+        where: {
+          key: { in: expiredBuckets.map((bucket) => bucket.key) },
+          resetAt: { lt: now },
+        },
+      });
+      deletedRateLimitBuckets = cleanupResult.count;
+    }
+  } catch (err) {
+    // Share cleanup remains successful even if expired throttle rows cannot
+    // be pruned during this invocation; a later cron run will retry.
+    logger.warn("[Cleanup] Failed to prune expired rate-limit buckets", {
+      detail: err instanceof Error ? err.message : String(err),
+    });
+  }
+
   const durationMs = Date.now() - startTime;
   logger.info("[Cleanup] Finished cron cleanup run", {
     candidates: eligibleShares.length,
     deletedShares,
     deletedFiles,
     failedShares,
+    deletedRateLimitBuckets,
     durationMs,
   });
 
@@ -147,6 +180,7 @@ export async function GET(req: NextRequest) {
     deletedShares,
     deletedFiles,
     failedShares,
+    deletedRateLimitBuckets,
     batchCandidates: eligibleShares.length,
     durationMs,
   });

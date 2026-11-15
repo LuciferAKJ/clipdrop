@@ -3,8 +3,10 @@ import { NextRequest } from "next/server";
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
-    share: {
-      count: vi.fn(),
+    rateLimitBucket: {
+      createMany: vi.fn().mockResolvedValue({ count: 1 }),
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+      deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
     },
   },
 }));
@@ -16,6 +18,12 @@ import { prisma } from "@/lib/prisma";
 describe("lib/ipHash & rate limiting spoofing protections", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    (prisma.rateLimitBucket.createMany as any).mockReset();
+    (prisma.rateLimitBucket.createMany as any).mockResolvedValue({ count: 1 });
+    (prisma.rateLimitBucket.updateMany as any).mockReset();
+    (prisma.rateLimitBucket.updateMany as any).mockResolvedValue({ count: 1 });
+    (prisma.rateLimitBucket.deleteMany as any).mockReset();
+    (prisma.rateLimitBucket.deleteMany as any).mockResolvedValue({ count: 0 });
   });
 
   it("prioritizes x-real-ip from Vercel edge and ignores spoofed x-forwarded-for headers", () => {
@@ -41,7 +49,7 @@ describe("lib/ipHash & rate limiting spoofing protections", () => {
     expect(ip).toBe("198.51.100.50");
   });
 
-  it("falls back to x-forwarded-for when running behind generic reverse proxy", () => {
+  it("ignores untrusted x-forwarded-for when trusted proxy headers are absent", () => {
     const req = new NextRequest("http://localhost/api/upload", {
       headers: {
         "x-forwarded-for": "192.0.2.1",
@@ -49,7 +57,56 @@ describe("lib/ipHash & rate limiting spoofing protections", () => {
     });
 
     const ip = getClientIp(req);
-    expect(ip).toBe("192.0.2.1");
+    expect(ip).toBe("unknown");
+  });
+
+  it("uses IP_HASH_PEPPER as a keyed HMAC secret", () => {
+    const previousPepper = process.env.IP_HASH_PEPPER;
+    try {
+      process.env.IP_HASH_PEPPER = "test-pepper-one-with-at-least-32-characters";
+      const first = hashIp("203.0.113.10");
+      process.env.IP_HASH_PEPPER = "test-pepper-two-with-at-least-32-characters";
+      const second = hashIp("203.0.113.10");
+      expect(first).not.toBe(second);
+      expect(first).not.toContain("203.0.113.10");
+    } finally {
+      if (previousPepper === undefined) delete process.env.IP_HASH_PEPPER;
+      else process.env.IP_HASH_PEPPER = previousPepper;
+    }
+  });
+
+  it("rejects a short production IP hash pepper", () => {
+    const previousPepper = process.env.IP_HASH_PEPPER;
+    const previousMode = process.env.NODE_ENV;
+    try {
+      process.env.IP_HASH_PEPPER = "too-short";
+      (process.env as any).NODE_ENV = "production";
+      expect(() => hashIp("203.0.113.10")).toThrow(
+        "IP_HASH_PEPPER must be configured in production with at least 32 characters",
+      );
+    } finally {
+      if (previousPepper === undefined) delete (process.env as any).IP_HASH_PEPPER;
+      else (process.env as any).IP_HASH_PEPPER = previousPepper;
+      if (previousMode === undefined) delete (process.env as any).NODE_ENV;
+      else (process.env as any).NODE_ENV = previousMode;
+    }
+  });
+
+  it("fails closed in production when IP_HASH_PEPPER is missing", () => {
+    const previousPepper = process.env.IP_HASH_PEPPER;
+    const previousMode = process.env.NODE_ENV;
+    try {
+      delete (process.env as any).IP_HASH_PEPPER;
+      (process.env as any).NODE_ENV = "production";
+      expect(() => hashIp("203.0.113.10")).toThrow(
+        "IP_HASH_PEPPER must be configured in production with at least 32 characters",
+      );
+    } finally {
+      if (previousPepper === undefined) delete (process.env as any).IP_HASH_PEPPER;
+      else (process.env as any).IP_HASH_PEPPER = previousPepper;
+      if (previousMode === undefined) delete (process.env as any).NODE_ENV;
+      else (process.env as any).NODE_ENV = previousMode;
+    }
   });
 
   it("returns 'unknown' when no proxy headers exist", () => {
@@ -60,22 +117,19 @@ describe("lib/ipHash & rate limiting spoofing protections", () => {
 
   it("enforces rate limits on unknown IPs instead of bypassing", async () => {
     const unknownHash = hashIp("unknown");
-    (prisma.share.count as any).mockResolvedValue(10); // at limit
+    (prisma.rateLimitBucket.updateMany as any)
+      .mockResolvedValueOnce({ count: 0 }) // no expired bucket to reset
+      .mockResolvedValueOnce({ count: 0 }); // full bucket cannot increment
 
     await expect(checkRateLimit(unknownHash)).rejects.toThrow(RateLimitError);
-    expect(prisma.share.count).toHaveBeenCalledWith({
-      where: {
-        ipHash: unknownHash,
-        createdAt: {
-          gte: expect.any(Date),
-        },
-      },
-    });
+    expect(prisma.rateLimitBucket.updateMany).toHaveBeenCalledTimes(2);
   });
 
   it("allows uploads below the rate limit threshold", async () => {
     const ipHash = hashIp("203.0.113.10");
-    (prisma.share.count as any).mockResolvedValue(5); // below 10
+    (prisma.rateLimitBucket.updateMany as any)
+      .mockResolvedValueOnce({ count: 0 }) // no expired bucket to reset
+      .mockResolvedValueOnce({ count: 1 }); // request admitted
 
     await expect(checkRateLimit(ipHash)).resolves.not.toThrow();
   });

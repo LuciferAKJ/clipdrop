@@ -112,12 +112,22 @@ test.describe("Public Smoke Tests", () => {
     await expect(page).toHaveURL(/\/$/);
   });
 
-  test("invalid or non-existent share code displays not found state safely", async ({
+  test("invalid or non-existent share code returns API 404 and displays not found safely", async ({
     page,
   }) => {
+    const metadataResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes("/api/share/INVALID999") &&
+        response.request().method() === "GET",
+    );
+
     await page.goto("/s/INVALID999");
 
-    // Should render the error/expired state cleanly without unhandled exception
+    // A generic error page is not proof that the backend handled a missing
+    // share correctly. Require the API's explicit not-found response.
+    const response = await metadataResponse;
+    expect(response.status()).toBe(404);
+
     await expect(
       page.getByRole("heading", { name: /share not found/i }),
     ).toBeVisible({ timeout: 15_000 });

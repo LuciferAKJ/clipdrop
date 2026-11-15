@@ -2,8 +2,14 @@ import { NextRequest } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { validateDeviceRegistration } from "@/lib/validation";
-import { unauthorized, badRequest, ok } from "@/lib/apiResponses";
+import { unauthorized, badRequest, ok, tooManyRequests, forbidden } from "@/lib/apiResponses";
 import { logger } from "@/lib/logger";
+import {
+  RATE_LIMIT_DEVICE_MAX,
+  RATE_LIMIT_WINDOW_MS,
+} from "@/lib/constants";
+import { consumeRateLimit, RateLimitError } from "@/lib/rateLimit";
+import { isSameOriginRequest } from "@/lib/csrf";
 
 export async function GET() {
   const { userId } = await auth();
@@ -18,8 +24,26 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  if (!isSameOriginRequest(req)) {
+    return forbidden("Cross-origin request rejected");
+  }
+
   const { userId } = await auth();
   if (!userId) return unauthorized();
+
+  try {
+    await consumeRateLimit(
+      `device-write:${userId}`,
+      RATE_LIMIT_DEVICE_MAX,
+      RATE_LIMIT_WINDOW_MS,
+      "Too many device registration requests. Please try again in a minute.",
+    );
+  } catch (error) {
+    if (error instanceof RateLimitError) {
+      return tooManyRequests(error.message);
+    }
+    throw error;
+  }
 
   const body = await req.json().catch(() => null);
   if (!body) return badRequest("Invalid request body");

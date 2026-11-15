@@ -7,6 +7,11 @@ import { NextRequest } from "next/server";
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
+    rateLimitBucket: {
+      createMany: vi.fn().mockResolvedValue({ count: 1 }),
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+      deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+    },
     share: {
       create: vi.fn(),
       delete: vi.fn(),
@@ -40,8 +45,11 @@ function makeUploadReq(formData: FormData, ip = "198.51.100.99") {
   const headers = new Headers();
   headers.set("content-type", "multipart/form-data");
   headers.set("x-real-ip", ip);
+  headers.set("host", "localhost");
+  headers.set("origin", "http://localhost");
 
   return {
+    url: "http://localhost/api/upload",
     headers,
     formData: vi.fn().mockResolvedValue(formData),
     json: vi.fn().mockRejectedValue(new Error("Not JSON")),
