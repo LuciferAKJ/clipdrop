@@ -314,6 +314,10 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ code: share.code }, { status: 201 });
   } catch (error) {
+    if (error instanceof RateLimitError) {
+      return NextResponse.json({ error: error.message }, { status: 429 });
+    }
+
     if (error instanceof UploadValidationError) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
