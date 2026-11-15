@@ -71,7 +71,7 @@ describe("DELETE /api/dashboard/delete cleanup lifecycle", () => {
         expiresAt: expect.any(Date),
       },
     });
-    expect(prisma.share.updateMany.mock.invocationCallOrder[0]).toBeLessThan(
+    expect((prisma.share.updateMany as any).mock.invocationCallOrder[0]).toBeLessThan(
       (deleteFromCloudinary as any).mock.invocationCallOrder[0],
     );
     expect(prisma.share.delete).toHaveBeenCalledWith({
