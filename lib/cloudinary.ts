@@ -84,8 +84,14 @@ export async function uploadToCloudinary(
 }
 
 export async function deleteFromCloudinary(publicId: string, mimeType: string) {
-  await cloudinary.uploader.destroy(publicId, {
+  const result = await cloudinary.uploader.destroy(publicId, {
     resource_type: resolveResourceType(mimeType),
     type: "upload",
   });
+
+  // Cloudinary's "not found" response is an idempotent success: the asset
+  // is already absent, so retrying cleanup must not block database deletion.
+  if (result.result !== "ok" && result.result !== "not found") {
+    throw new Error("Cloudinary did not confirm asset deletion");
+  }
 }

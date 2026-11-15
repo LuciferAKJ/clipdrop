@@ -31,50 +31,89 @@ jobs:
       - name: Run type checking
         run: npx tsc --noEmit
 
-      - name: Run unit tests
-        run: npm run test
-
       - name: Run coverage
         run: npm run test:coverage
         env:
           # Coverage run needs the same env shape as local dev for any
           # module that reads process.env at import time (e.g. Clerk,
           # Prisma). Add repo secrets here if tests fail on missing env.
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+          DATABASE_URL: ${{ secrets.CI_DATABASE_URL || 'postgresql://ci:ci@localhost:5432/clipdrop' }}
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
           CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
           CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
           CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
           CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
-          IP_HASH_PEPPER: ${{ secrets.IP_HASH_PEPPER }}
+          IP_HASH_PEPPER: ${{ secrets.CI_IP_HASH_PEPPER }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
+
+      - name: Validate dedicated E2E database URL
+        if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.actor != 'dependabot[bot]' && github.event.pull_request.head.repo.full_name == github.repository)
+        shell: bash
+        env:
+          CI_DATABASE_URL: ${{ secrets.CI_DATABASE_URL }}
+          CI_DIRECT_URL: ${{ secrets.CI_DIRECT_URL }}
+          CI_IP_HASH_PEPPER: ${{ secrets.CI_IP_HASH_PEPPER }}
+        run: |
+          if [[ -z "$CI_DATABASE_URL" ]]; then
+            echo "::error::Add CI_DATABASE_URL (pooled Neon test-branch URL) in Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+          if [[ -z "$CI_DIRECT_URL" ]]; then
+            echo "::error::Add CI_DIRECT_URL (direct, non-pooled Neon test-branch URL) in Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+          case "$CI_DATABASE_URL" in
+            postgres://*|postgresql://*) ;;
+            *) echo "::error::CI_DATABASE_URL must use the postgres:// or postgresql:// scheme."; exit 1 ;;
+          esac
+          case "$CI_DATABASE_URL" in
+            *-pooler.*) ;;
+            *) echo "::error::CI_DATABASE_URL must be the pooled Neon endpoint (hostname contains -pooler)."; exit 1 ;;
+          esac
+          case "$CI_DIRECT_URL" in
+            postgres://*|postgresql://*) ;;
+            *) echo "::error::CI_DIRECT_URL must use the postgres:// or postgresql:// scheme."; exit 1 ;;
+          esac
+          case "$CI_DIRECT_URL" in
+            *-pooler.*) echo "::error::CI_DIRECT_URL must be the direct Neon endpoint (hostname must not contain -pooler)."; exit 1 ;;
+            *) ;;
+          esac
+          if [[ ${#CI_IP_HASH_PEPPER} -lt 32 ]]; then
+            echo "::error::Set CI_IP_HASH_PEPPER to a random secret with at least 32 characters."
+            exit 1
+          fi
 
       - name: Run production build
         run: npm run build
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+          DATABASE_URL: ${{ secrets.CI_DATABASE_URL || 'postgresql://ci:ci@localhost:5432/clipdrop' }}
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
           CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
           CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
           CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
           CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
-          IP_HASH_PEPPER: ${{ secrets.IP_HASH_PEPPER }}
+          IP_HASH_PEPPER: ${{ secrets.CI_IP_HASH_PEPPER }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
 
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps chromium
 
+      - name: Apply migrations to the dedicated E2E database
+        if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.actor != 'dependabot[bot]' && github.event.pull_request.head.repo.full_name == github.repository)
+        run: npx prisma migrate deploy
+        env:
+          DATABASE_URL: ${{ secrets.CI_DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.CI_DIRECT_URL }}
+
       - name: Run public E2E smoke tests
+        if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.actor != 'dependabot[bot]' && github.event.pull_request.head.repo.full_name == github.repository)
         run: npm run test:e2e:public
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+          DATABASE_URL: ${{ secrets.CI_DATABASE_URL }}
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
           CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
           CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
           CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
           CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
-          IP_HASH_PEPPER: ${{ secrets.IP_HASH_PEPPER }}
+          IP_HASH_PEPPER: ${{ secrets.CI_IP_HASH_PEPPER }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}

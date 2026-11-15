@@ -3,9 +3,14 @@ import { NextRequest } from "next/server";
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
+    $queryRaw: vi.fn().mockResolvedValue([{ count: 1 }]),
+    rateLimitBucket: {
+      deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+    },
     share: {
       create: vi.fn(),
       delete: vi.fn(),
+      updateMany: vi.fn(),
       count: vi.fn(),
       findUnique: vi.fn(),
     },
@@ -42,8 +47,11 @@ function makeUploadReq(formData: FormData, ip = "198.51.100.11") {
   const headers = new Headers();
   headers.set("content-type", "multipart/form-data");
   headers.set("x-real-ip", ip);
+  headers.set("host", "localhost");
+  headers.set("origin", "http://localhost");
 
   return {
+    url: "http://localhost/api/upload",
     headers,
     formData: vi.fn().mockResolvedValue(formData),
     json: vi.fn().mockRejectedValue(new Error("Not JSON")),
@@ -54,6 +62,21 @@ describe("Upload Pre-validation & Rollback (app/api/upload)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (prisma.share.count as any).mockResolvedValue(0); // rate limiting passes
+  });
+
+  it("returns 429 when the upload rate limit is exhausted", async () => {
+    // PR #33 still uses the existing share-count upload limiter. PR #34
+    // replaces this with the persistent PostgreSQL bucket implementation.
+    (prisma.share.count as any).mockResolvedValueOnce(10);
+
+    const res = await POST(makeUploadReq(new FormData(), "198.51.100.19"));
+
+    expect(res.status).toBe(429);
+    expect(await res.json()).toMatchObject({
+      error: expect.stringContaining("Too many uploads"),
+    });
+    expect(prisma.share.create).not.toHaveBeenCalled();
+    expect(uploadToCloudinary).not.toHaveBeenCalled();
   });
 
   it("F. multi-file upload rejects upfront if any file fails validation without touching Cloudinary or DB", async () => {
@@ -110,9 +133,9 @@ describe("Upload Pre-validation & Rollback (app/api/upload)", () => {
     const req = makeUploadReq(formData, "198.51.100.12");
 
     const res = await POST(req);
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(500);
     const json = await res.json();
-    expect(json.error).toBe("Cloudinary connection reset");
+    expect(json.error).toBe("Upload failed. Please try again.");
 
     // Rollback verification:
     // 1. File 1 was cleaned up from Cloudinary
@@ -124,6 +147,55 @@ describe("Upload Pre-validation & Rollback (app/api/upload)", () => {
     expect(prisma.share.delete).toHaveBeenCalledWith({
       where: { id: "share-temp-id" },
     });
+  });
+
+  it("H. preserves the share and file reference when Cloudinary rollback fails", async () => {
+    const file1 = new File([new Uint8Array(VALID_PDF_BYTES)], "doc1.pdf", {
+      type: "application/pdf",
+    });
+    const file2 = new File([new Uint8Array(VALID_PDF_BYTES)], "doc2.pdf", {
+      type: "application/pdf",
+    });
+    const formData = new FormData();
+    formData.append("files", file1);
+    formData.append("files", file2);
+
+    (prisma.share.create as any).mockResolvedValue({
+      id: "share-cleanup-pending",
+      code: "TEST99",
+    });
+    (prisma.file.create as any).mockResolvedValue({});
+    (uploadToCloudinary as any)
+      .mockResolvedValueOnce({
+        url: "https://res.cloudinary.com/demo/raw/upload/clipdrop/asset.pdf",
+        publicId: "clipdrop/asset.pdf",
+      })
+      .mockRejectedValueOnce(new Error("Cloudinary upload failed midway"));
+    (deleteFromCloudinary as any).mockRejectedValue(
+      new Error("Cloudinary temporarily unavailable"),
+    );
+    (prisma.share.updateMany as any).mockResolvedValue({ count: 1 });
+
+    const res = await POST(makeUploadReq(formData, "198.51.100.14"));
+
+    expect(res.status).toBe(500);
+    expect(await res.json()).toEqual({
+      error: "Upload failed. Please try again.",
+    });
+    // The first asset has one persisted cleanup reference; the second upload failed.
+    expect(prisma.file.create).toHaveBeenCalledTimes(1);
+    expect(prisma.share.delete).not.toHaveBeenCalled();
+    expect(prisma.share.updateMany).toHaveBeenCalledWith({
+      where: { id: "share-cleanup-pending" },
+      data: {
+        consumedAt: expect.any(Date),
+        expiresAt: expect.any(Date),
+      },
+    });
+    expect(deleteFromCloudinary).toHaveBeenCalledWith(
+      "clipdrop/asset.pdf",
+      "application/pdf",
+    );
   });
 
   it("I. legitimate multi-file upload creates share and files successfully", async () => {

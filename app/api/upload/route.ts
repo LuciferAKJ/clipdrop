@@ -1,13 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { generateUniqueCode } from "@/lib/codeGen";
-import { validateTextShare, validateFile } from "@/lib/validation";
+import {
+  validateTextShare,
+  validateFile,
+  UploadValidationError,
+} from "@/lib/validation";
 import { uploadToCloudinary, deleteFromCloudinary } from "@/lib/cloudinary";
 import { hashPassword } from "@/lib/password";
 import { auth } from "@clerk/nextjs/server";
 import { getClientIp, hashIp } from "@/lib/ipHash";
 import { checkRateLimit, RateLimitError } from "@/lib/rateLimit";
 import { logger } from "@/lib/logger";
+import { isSameOriginRequest } from "@/lib/csrf";
 
 const EXPIRY_OPTIONS: Record<string, number> = {
   "1h": 60 * 60 * 1000,
@@ -23,21 +28,11 @@ const ALLOWED_DOWNLOAD_LIMITS = [1, 5, 10, 25, 50, 100];
 
 export async function POST(req: NextRequest) {
   try {
-    const origin = req.headers.get("origin");
-    const host = req.headers.get("host");
-
-    if (origin && host) {
-      try {
-        const originHost = new URL(origin).host;
-        if (originHost !== host) {
-          return NextResponse.json(
-            { error: "Cross-origin request rejected" },
-            { status: 403 },
-          );
-        }
-      } catch {
-        return NextResponse.json({ error: "Invalid origin" }, { status: 403 });
-      }
+    if (!isSameOriginRequest(req)) {
+      return NextResponse.json(
+        { error: "Cross-origin request rejected" },
+        { status: 403 },
+      );
     }
 
     const { userId } = await auth();
@@ -65,19 +60,31 @@ export async function POST(req: NextRequest) {
     if (type.includes("multipart/form-data")) {
       const formData = await req.formData();
 
-      const files = formData.getAll("files") as File[];
+      const rawFiles = formData.getAll("files");
+      if (!rawFiles.every((value): value is File => value instanceof File)) {
+        throw new UploadValidationError("Invalid file upload");
+      }
+      const files = rawFiles;
 
       logger.debug("Files received for upload", {
         count: files.length,
       });
 
-      const text = formData.get("text") as string | null;
-      const password = formData.get("password") as string | null;
+      const rawText = formData.get("text");
+      const rawPassword = formData.get("password");
+      if (rawText !== null && typeof rawText !== "string") {
+        throw new UploadValidationError("Invalid text field");
+      }
+      if (rawPassword !== null && typeof rawPassword !== "string") {
+        throw new UploadValidationError("Invalid password field");
+      }
+      const text = rawText;
+      const password = rawPassword;
       const oneTimeUse = formData.get("oneTimeUse") === "true";
       const downloadLimitRaw = formData.get("downloadLimit") as string | null;
       const expiryRaw = formData.get("expiry") as string | null;
 
-      if (expiryRaw && !(expiryRaw in EXPIRY_OPTIONS)) {
+      if (expiryRaw && !Object.hasOwn(EXPIRY_OPTIONS, expiryRaw)) {
         return NextResponse.json({ error: "Invalid expiry" }, { status: 400 });
       }
 
@@ -104,7 +111,7 @@ export async function POST(req: NextRequest) {
       const passwordHash = password ? await hashPassword(password) : null;
 
       if (!files.length && !text) {
-        throw new Error("Nothing uploaded");
+        throw new UploadValidationError("Nothing uploaded");
       }
 
       if (text) {
@@ -132,8 +139,14 @@ export async function POST(req: NextRequest) {
         },
       });
 
-      const uploadedCloudinaryAssets: { publicId: string; mimeType: string }[] =
-        [];
+      const uploadedCloudinaryAssets: {
+        publicId: string;
+        mimeType: string;
+        url: string;
+        sizeBytes: number;
+        originalName: string;
+        fileRecordPersisted: boolean;
+      }[] = [];
 
       try {
         for (let i = 0; i < files.length; i++) {
@@ -145,38 +158,97 @@ export async function POST(req: NextRequest) {
             file.name,
             file.type,
           );
-          uploadedCloudinaryAssets.push({
+          const asset = {
             publicId: uploaded.publicId,
             mimeType: file.type,
-          });
+            url: uploaded.url,
+            sizeBytes: file.size,
+            originalName: file.name,
+            fileRecordPersisted: false,
+          };
+          uploadedCloudinaryAssets.push(asset);
 
           await prisma.file.create({
             data: {
               shareId: share.id,
-              url: uploaded.url,
-              publicId: uploaded.publicId,
-              mimeType: file.type,
-              sizeBytes: file.size,
-              originalName: file.name,
+              url: asset.url,
+              publicId: asset.publicId,
+              mimeType: asset.mimeType,
+              sizeBytes: asset.sizeBytes,
+              originalName: asset.originalName,
             },
           });
+          asset.fileRecordPersisted = true;
         }
       } catch (uploadError) {
-        // Rollback on failure: delete uploaded assets from Cloudinary
-        await Promise.allSettled(
+        // Remove every external asset created by this failed upload. Keep a
+        // database reference for anything Cloudinary did not confirm deleting.
+        const cleanupResults = await Promise.allSettled(
           uploadedCloudinaryAssets.map((asset) =>
             deleteFromCloudinary(asset.publicId, asset.mimeType),
           ),
         );
+        const failedAssets = cleanupResults.flatMap((result, index) =>
+          result.status === "rejected" ? [uploadedCloudinaryAssets[index]] : [],
+        );
 
-        // Delete the created share (cascading to any created File rows in DB)
-        await prisma.share
-          .delete({
+        if (failedAssets.length > 0) {
+          for (const asset of failedAssets) {
+            if (asset.fileRecordPersisted) continue;
+            try {
+              await prisma.file.create({
+                data: {
+                  shareId: share.id,
+                  url: asset.url,
+                  publicId: asset.publicId,
+                  mimeType: asset.mimeType,
+                  sizeBytes: asset.sizeBytes,
+                  originalName: asset.originalName,
+                },
+              });
+            } catch (recordError) {
+              logger.error(
+                "Failed to persist a Cloudinary cleanup reference",
+                recordError,
+              );
+            }
+          }
+
+          // Immediately disable the failed share and let the daily cron
+          // retry any Cloudinary assets that could not be removed.
+          await prisma.share.updateMany({
             where: { id: share.id },
-          })
-          .catch((delErr) => {
-            logger.error("Failed to delete share during rollback", delErr);
+            data: { consumedAt: new Date(), expiresAt: new Date() },
+          }).catch((updateError) => {
+            logger.error(
+              "Failed to mark upload for scheduled cleanup",
+              updateError,
+            );
           });
+
+          logger.error("Upload rollback left assets for scheduled cleanup", {
+            failedAssetCount: failedAssets.length,
+          });
+        } else {
+          // All external assets were removed. Delete the database share.
+          try {
+            await prisma.share.delete({ where: { id: share.id } });
+          } catch (deleteError) {
+            logger.error(
+              "Failed to remove rolled-back share from the database",
+              deleteError,
+            );
+            await prisma.share.updateMany({
+              where: { id: share.id },
+              data: { consumedAt: new Date(), expiresAt: new Date() },
+            }).catch((updateError) => {
+              logger.error(
+                "Failed to mark rolled-back share for scheduled cleanup",
+                updateError,
+              );
+            });
+          }
+        }
 
         throw uploadError;
       }
@@ -188,13 +260,16 @@ export async function POST(req: NextRequest) {
     // TEXT ONLY JSON UPLOAD
     // =========================
 
-    const body = await req.json();
+    const body = await req.json().catch(() => null);
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      throw new UploadValidationError("Invalid request body");
+    }
 
     const { text, password, oneTimeUse, downloadLimit, expiry } = body;
 
     validateTextShare(text);
 
-    if (expiry && !(expiry in EXPIRY_OPTIONS)) {
+    if (expiry && !Object.hasOwn(EXPIRY_OPTIONS, expiry)) {
       return NextResponse.json({ error: "Invalid expiry" }, { status: 400 });
     }
 
@@ -239,11 +314,18 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ code: share.code }, { status: 201 });
   } catch (error) {
-    logger.error("Upload error", error);
+    if (error instanceof RateLimitError) {
+      return NextResponse.json({ error: error.message }, { status: 429 });
+    }
 
+    if (error instanceof UploadValidationError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+
+    logger.error("Upload failed due to an unexpected server error", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Upload failed" },
-      { status: 400 },
+      { error: "Upload failed. Please try again." },
+      { status: 500 },
     );
   }
 }
