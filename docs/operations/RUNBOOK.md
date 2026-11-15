@@ -30,7 +30,7 @@ All secrets and configuration parameters must be set in the deployment platform 
 | `CLOUDINARY_CLOUD_NAME`             | Server Runtime         | Cloudinary cloud account name.                                                         |
 | `CLOUDINARY_API_KEY`                | Server Runtime         | Cloudinary REST API public key identifier.                                             |
 | `CLOUDINARY_API_SECRET`             | Server Runtime         | Cloudinary REST API private signing secret.                                            |
-| `IP_HASH_PEPPER`                    | Server Runtime         | Secret high-entropy string used to salt anonymized client IP hashes for rate limiting. |
+| `IP_HASH_PEPPER`                    | Server Runtime         | Random secret (at least 32 characters) used as the HMAC key for client IP rate-limit identifiers. Required in production. |
 | `CRON_SECRET`                       | Server Runtime         | Secret bearer token required to authenticate requests to `/api/cron/cleanup`.          |
 | `NEXT_PUBLIC_APP_URL`               | Build & Client Runtime | Public domain canonical URL (e.g., `https://clipdrop.yourdomain.com`).                 |
 | `E2E_TEST_EMAIL`                    | CI / Testing Only      | Dedicated test account email for running authenticated Playwright E2E suites in CI.    |
@@ -170,7 +170,8 @@ Structured JSON logs are emitted via `lib/logger.ts` and captured by Vercel Runt
 
 - Request counters are stored in the PostgreSQL `RateLimitBucket` table, not process-local memory.
 - A single atomic `INSERT .. ON CONFLICT .. RETURNING` statement performs bucket creation, reset, and increment safely across serverless instances.
-- The bucket identifier is SHA-256 hashed before it is stored. Do not add raw IP addresses or secrets to the bucket key.
+- Client IP identifiers use HMAC-SHA-256 with `IP_HASH_PEPPER`; bucket keys are hashed again before storage. Never log raw IP addresses or expose the pepper.
+- Production must have a randomly generated `IP_HASH_PEPPER` of at least 32 characters. The application intentionally fails closed if it is missing.
 - The daily cleanup endpoint removes up to 50 expired buckets per run. If backlog grows, review the cleanup duration and batch size before increasing it.
 
 ### Dependency & Security Alert Review
