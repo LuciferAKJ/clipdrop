@@ -51,12 +51,12 @@ describe("same-origin mutation request validation", () => {
     expect(isSameOriginRequest(req)).toBe(false);
   });
 
-  it("allows non-browser clients that omit Origin", () => {
+  it("rejects mutation requests that omit Origin", () => {
     const req = new NextRequest("https://clipdrop.example/api/clipboard", {
       method: "PUT",
       headers: { host: "clipdrop.example" },
     });
 
-    expect(isSameOriginRequest(req)).toBe(true);
+    expect(isSameOriginRequest(req)).toBe(false);
   });
 });
