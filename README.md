@@ -151,20 +151,20 @@ Add the appropriate values to `.env.local` for local development and to the rele
 
 | Variable | Purpose |
 | --- | --- |
-| `DATABASE_URL` | PostgreSQL connection string used by the Prisma Neon adapter. |
+| `DATABASE_URL` | Pooled PostgreSQL connection string used by the Prisma Neon adapter at runtime. For Neon, use the pooled hostname containing `-pooler`. |\n| `DIRECT_URL` | Optional direct, non-pooled PostgreSQL connection string used by Prisma CLI migrations. `prisma.config.ts` prefers it and falls back to `DATABASE_URL`. |
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk publishable key used by the application. |
 | `CLERK_SECRET_KEY` | Server-side Clerk secret key. |
 | `CLERK_WEBHOOK_SECRET` | Signing secret used to verify Clerk webhook events. |
 | `CLOUDINARY_CLOUD_NAME` | Cloudinary cloud name. |
 | `CLOUDINARY_API_KEY` | Cloudinary API key. |
 | `CLOUDINARY_API_SECRET` | Cloudinary API secret. |
-| `IP_HASH_PEPPER` | Secret pepper used when hashing client IP addresses for rate limiting. |
+| `IP_HASH_PEPPER` | Random server-side HMAC-SHA-256 key of at least 32 characters used for client-IP rate-limit identifiers. |
 | `CRON_SECRET` | Bearer token required by the scheduled cleanup endpoint. |
 | `NEXT_PUBLIC_APP_URL` | Optional canonical application URL used to build metadata and links. |
 | `E2E_TEST_EMAIL` | Optional email for a dedicated Clerk test account used by authenticated Playwright tests. |
 | `E2E_TEST_PASSWORD` | Optional password for that dedicated test account. |
 
-The current Prisma configuration reads `DATABASE_URL`. A separate `DIRECT_URL` variable is not required by the current application configuration.
+When `DIRECT_URL` is set, Prisma CLI commands such as `npx prisma migrate deploy` use that direct, non-pooled connection. The application runtime continues to use the pooled `DATABASE_URL`. For local development, keep both values in `.env.local`; never commit either connection string.
 
 **Keep all private credentials server-side.** Only the Clerk publishable key is intended to be exposed to the browser; do not add a `NEXT_PUBLIC_` prefix to secret values.
 
