@@ -66,12 +66,20 @@ jobs:
             postgres://*|postgresql://*) ;;
             *) echo "::error::CI_DATABASE_URL must use the postgres:// or postgresql:// scheme."; exit 1 ;;
           esac
+          case "$CI_DATABASE_URL" in
+            *-pooler.*) ;;
+            *) echo "::error::CI_DATABASE_URL must be the pooled Neon endpoint (hostname contains -pooler)."; exit 1 ;;
+          esac
           case "$CI_DIRECT_URL" in
             postgres://*|postgresql://*) ;;
             *) echo "::error::CI_DIRECT_URL must use the postgres:// or postgresql:// scheme."; exit 1 ;;
           esac
+          case "$CI_DIRECT_URL" in
+            *-pooler.*) echo "::error::CI_DIRECT_URL must be the direct Neon endpoint (hostname must not contain -pooler)."; exit 1 ;;
+            *) ;;
+          esac
           if [[ ${#CI_IP_HASH_PEPPER} -lt 32 ]]; then
-            echo "::error::Set CI_IP_HASH_PEPPER (or IP_HASH_PEPPER) to a random secret with at least 32 characters."
+            echo "::error::Set CI_IP_HASH_PEPPER to a random secret with at least 32 characters."
             exit 1
           fi
 
