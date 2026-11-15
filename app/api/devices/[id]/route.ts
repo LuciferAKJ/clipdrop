@@ -2,16 +2,39 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { validateDeviceName } from "@/lib/validation";
+import { isSameOriginRequest } from "@/lib/csrf";
+import {
+  RATE_LIMIT_DEVICE_MAX,
+  RATE_LIMIT_WINDOW_MS,
+} from "@/lib/constants";
+import { consumeRateLimit, RateLimitError } from "@/lib/rateLimit";
 
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  if (!isSameOriginRequest(req)) {
+    return NextResponse.json({ error: "Cross-origin request rejected" }, { status: 403 });
+  }
+
   const { userId } = await auth();
   const { id } = await params;
 
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    await consumeRateLimit(
+      `device-write:${userId}`,
+      RATE_LIMIT_DEVICE_MAX,
+      RATE_LIMIT_WINDOW_MS,
+    );
+  } catch (error) {
+    if (error instanceof RateLimitError) {
+      return NextResponse.json({ error: error.message }, { status: 429 });
+    }
+    throw error;
   }
 
   const body = await req.json().catch(() => null);
@@ -54,11 +77,28 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  if (!isSameOriginRequest(req)) {
+    return NextResponse.json({ error: "Cross-origin request rejected" }, { status: 403 });
+  }
+
   const { userId } = await auth();
   const { id } = await params;
 
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    await consumeRateLimit(
+      `device-write:${userId}`,
+      RATE_LIMIT_DEVICE_MAX,
+      RATE_LIMIT_WINDOW_MS,
+    );
+  } catch (error) {
+    if (error instanceof RateLimitError) {
+      return NextResponse.json({ error: error.message }, { status: 429 });
+    }
+    throw error;
   }
 
   const currentClientId = req.headers.get("x-client-id");
