@@ -100,8 +100,9 @@ git push origin main
 - The endpoint performs:
   1. Identification of shares where `expiresAt < now()`, or `consumedAt IS NOT NULL`, or `downloadCount >= downloadLimit`.
   2. Cloudinary asset removal for all attached files in batch.
-  3. Cascading database deletion of expired `Share` and `File` records.
-  4. Cleanup of orphaned device registrations (`lastSeenAt > 30 days`).
+  3. Delete the `Share` record only after Cloudinary confirms all attached assets are deleted; `File` rows cascade with it.
+  4. Retry shares whose external asset deletion previously failed.
+  5. Prune up to 50 expired PostgreSQL rate-limit buckets per run.
 
 ### Investigating Cleanup Failures
 
@@ -116,7 +117,7 @@ git push origin main
    curl -X GET "https://<app-domain>/api/cron/cleanup" \
      -H "Authorization: Bearer <CRON_SECRET>"
    ```
-   Expected response: `200 OK` with JSON `{ "deletedShares": N, "deletedFiles": M, "deletedDevices": D }`.
+   Expected response: `200 OK` with JSON containing `deletedShares`, `deletedFiles`, `failedShares`, `deletedRateLimitBuckets`, `batchCandidates`, and `durationMs`.
 
 ---
 
@@ -163,7 +164,16 @@ Structured JSON logs are emitted via `lib/logger.ts` and captured by Vercel Runt
 
 ---
 
-## 9. Dependency & Security Alert Review
+## 9. Rate Limiting & Dependency Security
+
+### Shared Rate-Limit Storage
+
+- Request counters are stored in the PostgreSQL `RateLimitBucket` table, not process-local memory.
+- A single atomic `INSERT .. ON CONFLICT .. RETURNING` statement performs bucket creation, reset, and increment safely across serverless instances.
+- The bucket identifier is SHA-256 hashed before it is stored. Do not add raw IP addresses or secrets to the bucket key.
+- The daily cleanup endpoint removes up to 50 expired buckets per run. If backlog grows, review the cleanup duration and batch size before increasing it.
+
+### Dependency & Security Alert Review
 
 1. Review Dependabot and GitHub Security Advisories weekly:
    - Development CLI tooling advisories (e.g., `shadcn`, `prisma` CLI parser) do NOT impact runtime production safety.
