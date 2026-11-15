@@ -22,15 +22,15 @@ All secrets and configuration parameters must be set in the deployment platform 
 
 | Variable Name                       | Required Scope         | Purpose / Description                                                                  |
 | ----------------------------------- | ---------------------- | -------------------------------------------------------------------------------------- |
-| `DATABASE_URL`                      | Build & Runtime        | Connection pooled PostgreSQL connection string for Prisma.                             |
-| `DIRECT_URL`                        | Build & Migration      | Direct PostgreSQL connection string for Prisma migrations/schema engines.              |
+| `DATABASE_URL`                      | Runtime                | Pooled Neon PostgreSQL connection string used by Prisma Client in Vercel/serverless traffic. |
+| `DIRECT_URL`                        | Prisma CLI / Migrations| Direct, non-pooled Neon connection string used by Prisma Migrate. Keep separate from the pooled runtime URL. |
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Build & Client Runtime | Clerk public publishable frontend API key (`pk_...`).                                  |
 | `CLERK_SECRET_KEY`                  | Server Runtime         | Clerk backend private secret key (`sk_...`).                                           |
 | `CLERK_WEBHOOK_SECRET`              | Server Runtime         | Svix webhook signing secret for verifying Clerk user event webhooks (`whsec_...`).     |
 | `CLOUDINARY_CLOUD_NAME`             | Server Runtime         | Cloudinary cloud account name.                                                         |
 | `CLOUDINARY_API_KEY`                | Server Runtime         | Cloudinary REST API public key identifier.                                             |
 | `CLOUDINARY_API_SECRET`             | Server Runtime         | Cloudinary REST API private signing secret.                                            |
-| `IP_HASH_PEPPER`                    | Server Runtime         | Secret high-entropy string used to salt anonymized client IP hashes for rate limiting. |
+| `IP_HASH_PEPPER`                    | Server Runtime         | Random HMAC-SHA-256 key of at least 32 characters for client-IP rate-limit identifiers. |
 | `CRON_SECRET`                       | Server Runtime         | Secret bearer token required to authenticate requests to `/api/cron/cleanup`.          |
 | `NEXT_PUBLIC_APP_URL`               | Build & Client Runtime | Public domain canonical URL (e.g., `https://clipdrop.yourdomain.com`).                 |
 | `E2E_TEST_EMAIL`                    | CI / Testing Only      | Dedicated test account email for running authenticated Playwright E2E suites in CI.    |
