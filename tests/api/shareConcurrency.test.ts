@@ -37,6 +37,13 @@ function makeReq(
 describe("Share Concurrency & Limits (app/api/share/[code])", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // The password lockout test installs a custom sequence of PostgreSQL
+    // bucket responses. Restore the shared default between tests so it
+    // cannot leak a simulated "bucket full" into unrelated share tests.
+    (prisma.$queryRaw as any).mockReset();
+    (prisma.$queryRaw as any).mockResolvedValue([{ count: 1 }]);
+    (prisma.rateLimitBucket.deleteMany as any).mockReset();
+    (prisma.rateLimitBucket.deleteMany as any).mockResolvedValue({ count: 0 });
   });
 
   it("A. downloadLimit=1: only exactly 1 concurrent request succeeds, others receive 410", async () => {
