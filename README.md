@@ -151,7 +151,8 @@ Add the appropriate values to `.env.local` for local development and to the rele
 
 | Variable | Purpose |
 | --- | --- |
-| `DATABASE_URL` | Pooled PostgreSQL connection string used by the Prisma Neon adapter at runtime. For Neon, use the pooled hostname containing `-pooler`. |\n| `DIRECT_URL` | Optional direct, non-pooled PostgreSQL connection string used by Prisma CLI migrations. `prisma.config.ts` prefers it and falls back to `DATABASE_URL`. |
+| `DATABASE_URL` | Pooled PostgreSQL connection string used by the Prisma Neon adapter at runtime. For Neon, use the pooled hostname containing `-pooler`. |
+| `DIRECT_URL` | Optional direct, non-pooled PostgreSQL connection string used by Prisma CLI migrations. `prisma.config.ts` prefers it and falls back to `DATABASE_URL`. |
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk publishable key used by the application. |
 | `CLERK_SECRET_KEY` | Server-side Clerk secret key. |
 | `CLERK_WEBHOOK_SECRET` | Signing secret used to verify Clerk webhook events. |
