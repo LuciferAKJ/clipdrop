@@ -158,7 +158,9 @@ export async function GET(req: NextRequest) {
   } catch (err) {
     // Share cleanup remains successful even if expired throttle rows cannot
     // be pruned during this invocation; a later cron run will retry.
-    logger.warn("[Cleanup] Failed to prune expired rate-limit buckets", err);
+    logger.warn("[Cleanup] Failed to prune expired rate-limit buckets", {
+      detail: err instanceof Error ? err.message : String(err),
+    });
   }
 
   const durationMs = Date.now() - startTime;
