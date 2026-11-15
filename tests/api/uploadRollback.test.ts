@@ -3,10 +3,6 @@ import { NextRequest } from "next/server";
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
-    $queryRaw: vi.fn().mockResolvedValue([{ count: 1 }]),
-    rateLimitBucket: {
-      deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
-    },
     share: {
       create: vi.fn(),
       delete: vi.fn(),
