@@ -83,13 +83,14 @@ describe("Batch 7: Logging, Dependency & Repository Cleanup", () => {
   });
 
   describe("3. Repository & Dependency Cleanliness", () => {
-    it("package.json does not contain native bcrypt dependency", () => {
+    it("uses bcryptjs without native bcrypt or deprecated type stub", () => {
       const pkgPath = path.resolve(process.cwd(), "package.json");
       const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
 
       expect(pkg.dependencies.bcrypt).toBeUndefined();
       expect(pkg.dependencies.bcryptjs).toBeDefined();
-      expect(pkg.devDependencies["@types/bcryptjs"]).toBeDefined();
+      // bcryptjs v3 ships its own TypeScript declarations.
+      expect(pkg.devDependencies["@types/bcryptjs"]).toBeUndefined();
     });
 
     it("dead rateLimiter.ts file does not exist", () => {
