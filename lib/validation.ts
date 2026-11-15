@@ -538,48 +538,48 @@ function validateFileContent(
 
 export function validateFile(file: File, buffer?: Buffer | Uint8Array) {
   try {
-  if (file.size > MAX_FILE_SIZE) {
-    throw new Error("File exceeds 10MB limit");
-  }
+    if (file.size > MAX_FILE_SIZE) {
+      throw new Error("File exceeds 10MB limit");
+    }
 
-  const ext = file.name?.split(".").pop()?.toLowerCase() ?? "";
+    const ext = file.name?.split(".").pop()?.toLowerCase() ?? "";
 
-  // 1. Explicitly block dangerous extensions
-  if (BLOCKED_EXTENSIONS.includes(ext)) {
-    throw new Error("This file type is not allowed");
-  }
+    // 1. Explicitly block dangerous extensions
+    if (BLOCKED_EXTENSIONS.includes(ext)) {
+      throw new Error("This file type is not allowed");
+    }
 
-  // 2. Explicitly reject SVG and HTML mime types
-  if (
-    file.type === "image/svg+xml" ||
-    file.type === "text/html" ||
-    file.type === "application/xhtml+xml"
-  ) {
-    throw new Error("This file type is not allowed");
-  }
+    // 2. Explicitly reject SVG and HTML mime types
+    if (
+      file.type === "image/svg+xml" ||
+      file.type === "text/html" ||
+      file.type === "application/xhtml+xml"
+    ) {
+      throw new Error("This file type is not allowed");
+    }
 
-  // 3. Extension check: if extension is present, it MUST be allowed
-  if (ext && !ALLOWED_EXTENSIONS.includes(ext)) {
-    throw new Error("File type not allowed");
-  }
+    // 3. Extension check: if extension is present, it MUST be allowed
+    if (ext && !ALLOWED_EXTENSIONS.includes(ext)) {
+      throw new Error("File type not allowed");
+    }
 
-  // 4. MIME check:
-  // Must match either an allowed prefix (image/, video/, audio/ - excluding svg),
-  // an allowed exact MIME, or an allowed extension
-  const mimePrefixAllowed =
-    ALLOWED_MIME_PREFIXES.some((p) => file.type?.startsWith(p)) &&
-    file.type !== "image/svg+xml";
-  const mimeExactAllowed = ALLOWED_MIME_TYPES.includes(file.type);
-  const extAllowed = ALLOWED_EXTENSIONS.includes(ext);
+    // 4. MIME check:
+    // Must match either an allowed prefix (image/, video/, audio/ - excluding svg),
+    // an allowed exact MIME, or an allowed extension
+    const mimePrefixAllowed =
+      ALLOWED_MIME_PREFIXES.some((p) => file.type?.startsWith(p)) &&
+      file.type !== "image/svg+xml";
+    const mimeExactAllowed = ALLOWED_MIME_TYPES.includes(file.type);
+    const extAllowed = ALLOWED_EXTENSIONS.includes(ext);
 
-  if (!mimePrefixAllowed && !mimeExactAllowed && !extAllowed) {
-    throw new Error("File type not allowed");
-  }
+    if (!mimePrefixAllowed && !mimeExactAllowed && !extAllowed) {
+      throw new Error("File type not allowed");
+    }
 
-  // 5. If buffer content is provided, perform deep content-signature and magic-byte checks
-  if (buffer) {
-    validateFileContent(ext, file.type, buffer);
-  }
+    // 5. If buffer content is provided, perform deep content-signature and magic-byte checks
+    if (buffer) {
+      validateFileContent(ext, file.type, buffer);
+    }
   } catch (error) {
     throw new UploadValidationError(
       error instanceof Error ? error.message : "Invalid file",
