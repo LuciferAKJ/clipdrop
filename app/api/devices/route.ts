@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { validateDeviceRegistration } from "@/lib/validation";
-import { unauthorized, badRequest, ok } from "@/lib/apiResponses";
+import { unauthorized, badRequest, ok, tooManyRequests } from "@/lib/apiResponses";
 import { logger } from "@/lib/logger";
 import {
   RATE_LIMIT_DEVICE_MAX,
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
     );
   } catch (error) {
     if (error instanceof RateLimitError) {
-      return badRequest(error.message);
+      return tooManyRequests(error.message);
     }
     throw error;
   }
