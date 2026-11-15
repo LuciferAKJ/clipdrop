@@ -22,18 +22,9 @@ export function getClientIp(req: NextRequest): string {
     return req.ip.trim();
   }
 
-  // 4. x-forwarded-for fallback
-  const forwarded = req.headers.get("x-forwarded-for");
-  if (forwarded) {
-    const ips = forwarded
-      .split(",")
-      .map((ip) => ip.trim())
-      .filter(Boolean);
-    if (ips.length > 0) {
-      return ips[0];
-    }
-  }
-
+  // Do not trust x-forwarded-for directly: clients can supply this header
+  // when the app is reached outside a trusted proxy chain. Unknown requests
+  // share a single fail-closed bucket rather than gaining a spoofable identity.
   return "unknown";
 }
 
