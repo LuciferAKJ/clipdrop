@@ -8,6 +8,7 @@ import {
   RATE_LIMIT_WINDOW_MS,
 } from "@/lib/constants";
 import { consumeRateLimit, RateLimitError } from "@/lib/rateLimit";
+import { isSameOriginRequest } from "@/lib/csrf";
 
 export async function GET() {
   const { userId } = await auth();
@@ -45,6 +46,13 @@ export async function GET() {
 }
 
 export async function PUT(req: NextRequest) {
+  if (!isSameOriginRequest(req)) {
+    return NextResponse.json(
+      { error: "Cross-origin request rejected" },
+      { status: 403 },
+    );
+  }
+
   const { userId } = await auth();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
