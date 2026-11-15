@@ -9,6 +9,8 @@ vi.mock("@/lib/prisma", () => ({
     },
     rateLimitBucket: {
       findMany: vi.fn().mockResolvedValue([]),
+      createMany: vi.fn().mockResolvedValue({ count: 0 }),
+      updateMany: vi.fn().mockResolvedValue({ count: 0 }),
       deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
     },
   },
