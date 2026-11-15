@@ -132,8 +132,14 @@ export async function POST(req: NextRequest) {
         },
       });
 
-      const uploadedCloudinaryAssets: { publicId: string; mimeType: string }[] =
-        [];
+      const uploadedCloudinaryAssets: {
+        publicId: string;
+        mimeType: string;
+        url: string;
+        sizeBytes: number;
+        originalName: string;
+        fileRecordPersisted: boolean;
+      }[] = [];
 
       try {
         for (let i = 0; i < files.length; i++) {
@@ -145,21 +151,27 @@ export async function POST(req: NextRequest) {
             file.name,
             file.type,
           );
-          uploadedCloudinaryAssets.push({
+          const asset = {
             publicId: uploaded.publicId,
             mimeType: file.type,
-          });
+            url: uploaded.url,
+            sizeBytes: file.size,
+            originalName: file.name,
+            fileRecordPersisted: false,
+          };
+          uploadedCloudinaryAssets.push(asset);
 
           await prisma.file.create({
             data: {
               shareId: share.id,
-              url: uploaded.url,
-              publicId: uploaded.publicId,
-              mimeType: file.type,
-              sizeBytes: file.size,
-              originalName: file.name,
+              url: asset.url,
+              publicId: asset.publicId,
+              mimeType: asset.mimeType,
+              sizeBytes: asset.sizeBytes,
+              originalName: asset.originalName,
             },
           });
+          asset.fileRecordPersisted = true;
         }
       } catch (uploadError) {
         // Rollback on failure: delete uploaded assets from Cloudinary
