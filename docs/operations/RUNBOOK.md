@@ -171,7 +171,7 @@ Structured JSON logs are emitted via `lib/logger.ts` and captured by Vercel Runt
 ### Shared Rate-Limit Storage
 
 - Request counters are stored in the PostgreSQL `RateLimitBucket` table, not process-local memory.
-- A single atomic `INSERT .. ON CONFLICT .. RETURNING` statement performs bucket creation, reset, and increment safely across serverless instances.
+- Prisma `createMany(skipDuplicates)` initializes a bucket, then conditional `updateMany` operations reset expired windows and increment only while `count < max`. PostgreSQL evaluates each conditional update atomically across serverless instances.
 - Client IP identifiers use HMAC-SHA-256 with `IP_HASH_PEPPER`; bucket keys are hashed again before storage. Never log raw IP addresses or expose the pepper.
 - Production must have a randomly generated `IP_HASH_PEPPER` of at least 32 characters. The application intentionally fails closed if it is missing. Use a different value for CI.
 - The daily cleanup endpoint removes up to 1,000 expired buckets per run. Monitor the cleanup response and increase the dedicated batch size if the expired-bucket backlog grows.
