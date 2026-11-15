@@ -18,8 +18,12 @@ import { prisma } from "@/lib/prisma";
 describe("lib/ipHash & rate limiting spoofing protections", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    (prisma.rateLimitBucket.createMany as any).mockReset();
     (prisma.rateLimitBucket.createMany as any).mockResolvedValue({ count: 1 });
+    (prisma.rateLimitBucket.updateMany as any).mockReset();
     (prisma.rateLimitBucket.updateMany as any).mockResolvedValue({ count: 1 });
+    (prisma.rateLimitBucket.deleteMany as any).mockReset();
+    (prisma.rateLimitBucket.deleteMany as any).mockResolvedValue({ count: 0 });
   });
 
   it("prioritizes x-real-ip from Vercel edge and ignores spoofed x-forwarded-for headers", () => {
