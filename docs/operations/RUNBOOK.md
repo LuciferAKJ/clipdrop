@@ -23,7 +23,7 @@ All secrets and configuration parameters must be set in the deployment platform 
 | Variable Name                       | Required Scope         | Purpose / Description                                                                  |
 | ----------------------------------- | ---------------------- | -------------------------------------------------------------------------------------- |
 | `DATABASE_URL`                      | Build & Runtime        | Connection pooled PostgreSQL connection string for Prisma.                             |
-| `DIRECT_URL`                        | Build & Migration      | Direct PostgreSQL connection string for Prisma migrations/schema engines.              |
+| `CI_DATABASE_URL`                   | CI / E2E Testing Only  | Dedicated Neon test-branch PostgreSQL URL used by the public Playwright smoke suite. Never point this at production. |
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Build & Client Runtime | Clerk public publishable frontend API key (`pk_...`).                                  |
 | `CLERK_SECRET_KEY`                  | Server Runtime         | Clerk backend private secret key (`sk_...`).                                           |
 | `CLERK_WEBHOOK_SECRET`              | Server Runtime         | Svix webhook signing secret for verifying Clerk user event webhooks (`whsec_...`).     |
@@ -100,8 +100,8 @@ git push origin main
 - The endpoint performs:
   1. Identification of shares where `expiresAt < now()`, or `consumedAt IS NOT NULL`, or `downloadCount >= downloadLimit`.
   2. Cloudinary asset removal for all attached files in batch.
-  3. Cascading database deletion of expired `Share` and `File` records.
-  4. Cleanup of orphaned device registrations (`lastSeenAt > 30 days`).
+  3. Delete the `Share` record only after Cloudinary confirms all attached assets are deleted; related `File` rows are removed by the database cascade.
+  4. Preserve the `Share` and `File` rows when an asset deletion fails so the next scheduled run can retry.
 
 ### Investigating Cleanup Failures
 
@@ -116,7 +116,7 @@ git push origin main
    curl -X GET "https://<app-domain>/api/cron/cleanup" \
      -H "Authorization: Bearer <CRON_SECRET>"
    ```
-   Expected response: `200 OK` with JSON `{ "deletedShares": N, "deletedFiles": M, "deletedDevices": D }`.
+   Expected response: `200 OK` with JSON containing `deletedShares`, `deletedFiles`, `failedShares`, `batchCandidates`, and `durationMs`.
 
 ---
 
@@ -177,7 +177,7 @@ Structured JSON logs are emitted via `lib/logger.ts` and captured by Vercel Runt
 
 ## 10. Configuring Authenticated CI E2E Tests
 
-To enable the full authenticated Playwright test suite in GitHub Actions:
+To run the public Playwright smoke suite in GitHub Actions, configure `CI_DATABASE_URL` as a repository Actions secret pointing to a dedicated Neon test branch. The workflow applies the checked-in migrations to that database before browser tests. Do not point this secret at production. To enable the authenticated Playwright suite as well:
 
 1. Navigate to **GitHub Repository** > **Settings** > **Secrets and variables** > **Actions**.
 2. Add the following repository secrets:
