@@ -3,6 +3,10 @@ import { NextRequest } from "next/server";
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
+    $queryRaw: vi.fn().mockResolvedValue([{ count: 1 }]),
+    rateLimitBucket: {
+      deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+    },
     share: {
       findUnique: vi.fn(),
       updateMany: vi.fn(),
@@ -178,7 +182,20 @@ describe("Share Concurrency & Limits (app/api/share/[code])", () => {
     (prisma.share.updateMany as any).mockResolvedValue({ count: 1 });
 
     // Clean any prior state for this test key
-    clearPasswordAttempts(`pwd-fail:${ip}:${shareRecord.id}`);
+    await clearPasswordAttempts(`pwd-fail:${ip}:${shareRecord.id}`);
+
+    // Each POST consumes one IP request bucket and then one password bucket.
+    // Simulate five accepted password attempts followed by a blocked sixth.
+    let requestQueryCount = 0;
+    let passwordAttemptCount = 0;
+    (prisma.$queryRaw as any).mockImplementation(() => {
+      requestQueryCount++;
+      if (requestQueryCount % 2 === 1) return Promise.resolve([{ count: 1 }]);
+      passwordAttemptCount++;
+      return Promise.resolve(
+        passwordAttemptCount <= 5 ? [{ count: passwordAttemptCount }] : [],
+      );
+    });
 
     // Attempts 1 to 5 with wrong password return 401
     for (let i = 0; i < 5; i++) {
@@ -201,7 +218,7 @@ describe("Share Concurrency & Limits (app/api/share/[code])", () => {
     expect(blockedJson.error).toContain("Too many failed password attempts");
 
     // Clean up
-    clearPasswordAttempts(`pwd-fail:${ip}:${shareRecord.id}`);
+    await clearPasswordAttempts(`pwd-fail:${ip}:${shareRecord.id}`);
   }, 15000);
 
   it("GET endpoint reports requiresPassword and oneTimeUse appropriately", async () => {
