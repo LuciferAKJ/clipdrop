@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { deleteFromCloudinary } from "@/lib/cloudinary";
+import { logger } from "@/lib/logger";
 
 export async function DELETE(req: NextRequest) {
   const origin = req.headers.get("origin");
@@ -43,6 +44,16 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  // Disable retrieval before deleting external assets so a concurrent
+  // recipient cannot start a new download while cleanup is in progress.
+  const disableResult = await prisma.share.updateMany({
+    where: { id: share.id, userId },
+    data: { consumedAt: new Date(), expiresAt: new Date() },
+  });
+  if (disableResult.count === 0) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   const deletionResults = await Promise.allSettled(
     share.files.map((file) =>
       deleteFromCloudinary(file.publicId, file.mimeType),
@@ -53,13 +64,11 @@ export async function DELETE(req: NextRequest) {
   );
 
   if (hasDeletionFailure) {
-    // Hide the share immediately, but keep its File rows so the scheduled
-    // cleanup job can retry any assets Cloudinary did not delete.
-    await prisma.share.updateMany({
-      where: { id: share.id, userId },
-      data: { consumedAt: new Date(), expiresAt: new Date() },
+    // Keep File rows for assets that may still exist; the scheduled cleanup
+    // endpoint will retry them on its next run.
+    logger.warn("Share disabled; one or more file assets need cleanup retry", {
+      shareId: share.id,
     });
-
     return NextResponse.json(
       {
         success: true,
@@ -70,7 +79,20 @@ export async function DELETE(req: NextRequest) {
     );
   }
 
-  await prisma.share.delete({ where: { id: share.id } });
-
-  return NextResponse.json({ success: true, pendingCleanup: false });
+  try {
+    await prisma.share.delete({ where: { id: share.id } });
+    return NextResponse.json({ success: true, pendingCleanup: false });
+  } catch (error) {
+    logger.error("Failed to delete share after Cloudinary cleanup", error);
+    // The record is already disabled and remains eligible for the cleanup
+    // cron. Return 202 so the client knows the deletion is pending.
+    return NextResponse.json(
+      {
+        success: true,
+        pendingCleanup: true,
+        message: "Share disabled. Database cleanup will be retried automatically.",
+      },
+      { status: 202 },
+    );
+  }
 }
