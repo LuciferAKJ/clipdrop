@@ -172,7 +172,7 @@ Structured JSON logs are emitted via `lib/logger.ts` and captured by Vercel Runt
 - A single atomic `INSERT .. ON CONFLICT .. RETURNING` statement performs bucket creation, reset, and increment safely across serverless instances.
 - Client IP identifiers use HMAC-SHA-256 with `IP_HASH_PEPPER`; bucket keys are hashed again before storage. Never log raw IP addresses or expose the pepper.
 - Production must have a randomly generated `IP_HASH_PEPPER` of at least 32 characters. The application intentionally fails closed if it is missing.
-- The daily cleanup endpoint removes up to 50 expired buckets per run. If backlog grows, review the cleanup duration and batch size before increasing it.
+- The daily cleanup endpoint removes up to 1,000 expired buckets per run. Monitor the cleanup response and increase the dedicated batch size if the expired-bucket backlog grows.
 
 ### Dependency & Security Alert Review
 
