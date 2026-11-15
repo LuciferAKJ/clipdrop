@@ -1,4 +1,4 @@
-import { createHash } from "crypto";
+import { createHmac } from "crypto";
 import { NextRequest } from "next/server";
 
 export function getClientIp(req: NextRequest): string {
@@ -38,8 +38,15 @@ export function getClientIp(req: NextRequest): string {
 }
 
 export function hashIp(ip: string): string {
-  const pepper = process.env.IP_HASH_PEPPER || "";
-  return createHash("sha256")
-    .update(ip + pepper)
-    .digest("hex");
+  const pepper = process.env.IP_HASH_PEPPER?.trim();
+
+  if (!pepper && process.env.NODE_ENV === "production") {
+    throw new Error("IP_HASH_PEPPER must be configured in production");
+  }
+
+  // A fixed development-only key keeps local tests deterministic. Production
+  // requests must use a separately generated secret from the deployment's
+  // environment; HMAC prevents straightforward offline IP dictionary checks.
+  const key = pepper || "clipdrop-local-development-only-ip-hash-key";
+  return createHmac("sha256", key).update(ip, "utf8").digest("hex");
 }
