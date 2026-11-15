@@ -22,6 +22,10 @@ import { auth } from "@clerk/nextjs/server";
 function makePostReq(body: unknown) {
   return new NextRequest("http://localhost/api/devices", {
     method: "POST",
+    headers: {
+      host: "localhost",
+      origin: "http://localhost",
+    },
     body: JSON.stringify(body),
   });
 }
