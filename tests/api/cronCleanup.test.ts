@@ -30,7 +30,10 @@ vi.mock("@/lib/logger", () => ({
 import { GET, verifyCronSecret } from "@/app/api/cron/cleanup/route";
 import { prisma } from "@/lib/prisma";
 import { deleteFromCloudinary } from "@/lib/cloudinary";
-import { CLEANUP_BATCH_SIZE } from "@/lib/constants";
+import {
+  CLEANUP_BATCH_SIZE,
+  RATE_LIMIT_CLEANUP_BATCH_SIZE,
+} from "@/lib/constants";
 
 function makeReq(authHeader?: string) {
   return new NextRequest("http://localhost/api/cron/cleanup", {
@@ -431,7 +434,7 @@ describe("Cron Cleanup Hardening (app/api/cron/cleanup/route.ts)", () => {
         where: { resetAt: { lt: expect.any(Date) } },
         select: { key: true },
         orderBy: { resetAt: "asc" },
-        take: CLEANUP_BATCH_SIZE,
+        take: RATE_LIMIT_CLEANUP_BATCH_SIZE,
       });
       expect(prisma.rateLimitBucket.deleteMany).toHaveBeenCalledWith({
         where: {
