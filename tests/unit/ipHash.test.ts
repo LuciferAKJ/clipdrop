@@ -42,7 +42,7 @@ describe("lib/ipHash & rate limiting spoofing protections", () => {
     expect(ip).toBe("198.51.100.50");
   });
 
-  it("falls back to x-forwarded-for when running behind generic reverse proxy", () => {
+  it("ignores untrusted x-forwarded-for when trusted proxy headers are absent", () => {
     const req = new NextRequest("http://localhost/api/upload", {
       headers: {
         "x-forwarded-for": "192.0.2.1",
@@ -50,7 +50,7 @@ describe("lib/ipHash & rate limiting spoofing protections", () => {
     });
 
     const ip = getClientIp(req);
-    expect(ip).toBe("192.0.2.1");
+    expect(ip).toBe("unknown");
   });
 
   it("uses IP_HASH_PEPPER as a keyed HMAC secret", () => {
