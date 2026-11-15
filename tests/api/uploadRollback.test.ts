@@ -6,6 +6,7 @@ vi.mock("@/lib/prisma", () => ({
     share: {
       create: vi.fn(),
       delete: vi.fn(),
+      updateMany: vi.fn(),
       count: vi.fn(),
       findUnique: vi.fn(),
     },
@@ -124,6 +125,44 @@ describe("Upload Pre-validation & Rollback (app/api/upload)", () => {
     expect(prisma.share.delete).toHaveBeenCalledWith({
       where: { id: "share-temp-id" },
     });
+  });
+
+  it("H. preserves the share and file reference when Cloudinary rollback fails", async () => {
+    const file = new File([new Uint8Array(VALID_PDF_BYTES)], "doc.pdf", {
+      type: "application/pdf",
+    });
+    const formData = new FormData();
+    formData.append("files", file);
+
+    (prisma.share.create as any).mockResolvedValue({
+      id: "share-cleanup-pending",
+      code: "TEST99",
+    });
+    (prisma.file.create as any).mockResolvedValue({});
+    (uploadToCloudinary as any).mockResolvedValue({
+      url: "https://res.cloudinary.com/demo/raw/upload/clipdrop/asset.pdf",
+      publicId: "clipdrop/asset.pdf",
+    });
+    (deleteFromCloudinary as any).mockRejectedValue(
+      new Error("Cloudinary temporarily unavailable"),
+    );
+    (prisma.share.updateMany as any).mockResolvedValue({ count: 1 });
+
+    const res = await POST(makeUploadReq(formData, "198.51.100.14"));
+
+    expect(res.status).toBe(400);
+    expect(prisma.share.delete).not.toHaveBeenCalled();
+    expect(prisma.share.updateMany).toHaveBeenCalledWith({
+      where: { id: "share-cleanup-pending" },
+      data: {
+        consumedAt: expect.any(Date),
+        expiresAt: expect.any(Date),
+      },
+    });
+    expect(deleteFromCloudinary).toHaveBeenCalledWith(
+      "clipdrop/asset.pdf",
+      "application/pdf",
+    );
   });
 
   it("I. legitimate multi-file upload creates share and files successfully", async () => {
