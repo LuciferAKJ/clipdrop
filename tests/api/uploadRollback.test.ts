@@ -157,7 +157,8 @@ describe("Upload Pre-validation & Rollback (app/api/upload)", () => {
     const res = await POST(makeUploadReq(formData, "198.51.100.14"));
 
     expect(res.status).toBe(400);
-    expect(prisma.file.create).toHaveBeenCalledTimes(2);
+    // The first asset has one persisted cleanup reference; the second upload failed.
+    expect(prisma.file.create).toHaveBeenCalledTimes(1);
     expect(prisma.share.delete).not.toHaveBeenCalled();
     expect(prisma.share.updateMany).toHaveBeenCalledWith({
       where: { id: "share-cleanup-pending" },
