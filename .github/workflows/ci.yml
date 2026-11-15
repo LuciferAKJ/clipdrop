@@ -66,6 +66,7 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Validate dedicated E2E database URL
+if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.actor != 'dependabot[bot]' && github.event.pull_request.head.repo.full_name == github.repository)
         shell: bash
         env:
           CI_DATABASE_URL: ${{ secrets.CI_DATABASE_URL }}
@@ -80,11 +81,13 @@ jobs:
           esac
 
       - name: Apply migrations to the dedicated E2E database
+if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.actor != 'dependabot[bot]' && github.event.pull_request.head.repo.full_name == github.repository)
         run: npx prisma migrate deploy
         env:
           DATABASE_URL: ${{ secrets.CI_DATABASE_URL }}
 
       - name: Run public E2E smoke tests
+if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.actor != 'dependabot[bot]' && github.event.pull_request.head.repo.full_name == github.repository)
         run: npm run test:e2e:public
         env:
           DATABASE_URL: ${{ secrets.CI_DATABASE_URL }}
