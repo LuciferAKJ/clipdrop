@@ -70,6 +70,36 @@ describe("Shared PostgreSQL rate limiting", () => {
     expect(storedKey).not.toBe("upload:hashed-client-ip");
   });
 
+  it("admits no more than the configured maximum under concurrent requests", async () => {
+    const max = 3;
+    let admitted = 0;
+
+    (prisma.rateLimitBucket.updateMany as any).mockImplementation(
+      async ({ where }: any) => {
+        // No existing row has expired, so do not reset the window.
+        if (where.resetAt?.lte) return { count: 0 };
+
+        // Simulate PostgreSQL's atomic conditional UPDATE:
+        // only max requests can match count < max.
+        if (admitted < max) {
+          admitted += 1;
+          return { count: 1 };
+        }
+        return { count: 0 };
+      },
+    );
+
+    const results = await Promise.allSettled(
+      Array.from({ length: 12 }, (_, index) =>
+        consumeRateLimit(`concurrent-client-${index}`, max, 60_000),
+      ),
+    );
+
+    expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(max);
+    expect(results.filter((result) => result.status === "rejected")).toHaveLength(12 - max);
+    expect(admitted).toBe(max);
+  });
+
   it("rejects a full bucket when the conditional increment matches no row", async () => {
     (prisma.rateLimitBucket.updateMany as any)
       .mockResolvedValueOnce({ count: 0 }) // no expired row to reset
