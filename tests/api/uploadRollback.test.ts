@@ -156,7 +156,10 @@ describe("Upload Pre-validation & Rollback (app/api/upload)", () => {
 
     const res = await POST(makeUploadReq(formData, "198.51.100.14"));
 
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(500);
+    expect(await res.json()).toEqual({
+      error: "Upload failed. Please try again.",
+    });
     // The first asset has one persisted cleanup reference; the second upload failed.
     expect(prisma.file.create).toHaveBeenCalledTimes(1);
     expect(prisma.share.delete).not.toHaveBeenCalled();
