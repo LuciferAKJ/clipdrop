@@ -30,7 +30,7 @@ All secrets and configuration parameters must be set in the deployment platform 
 | `CLOUDINARY_CLOUD_NAME`             | Server Runtime         | Cloudinary cloud account name.                                                         |
 | `CLOUDINARY_API_KEY`                | Server Runtime         | Cloudinary REST API public key identifier.                                             |
 | `CLOUDINARY_API_SECRET`             | Server Runtime         | Cloudinary REST API private signing secret.                                            |
-| `IP_HASH_PEPPER`                    | Server Runtime         | Random secret (at least 32 characters) used as the HMAC key for client IP rate-limit identifiers. Required in production. |
+| `IP_HASH_PEPPER`                    | Server Runtime         | Secret high-entropy string used to salt anonymized client IP hashes for rate limiting. |
 | `CRON_SECRET`                       | Server Runtime         | Secret bearer token required to authenticate requests to `/api/cron/cleanup`.          |
 | `NEXT_PUBLIC_APP_URL`               | Build & Client Runtime | Public domain canonical URL (e.g., `https://clipdrop.yourdomain.com`).                 |
 | `E2E_TEST_EMAIL`                    | CI / Testing Only      | Dedicated test account email for running authenticated Playwright E2E suites in CI.    |
@@ -100,9 +100,8 @@ git push origin main
 - The endpoint performs:
   1. Identification of shares where `expiresAt < now()`, or `consumedAt IS NOT NULL`, or `downloadCount >= downloadLimit`.
   2. Cloudinary asset removal for all attached files in batch.
-  3. Delete the `Share` record only after Cloudinary confirms all attached assets are deleted; `File` rows cascade with it.
-  4. Retry shares whose external asset deletion previously failed.
-  5. Prune up to 50 expired PostgreSQL rate-limit buckets per run.
+  3. Delete the `Share` record only after Cloudinary confirms all attached assets are deleted; related `File` rows are removed by the database cascade.
+  4. Preserve the `Share` and `File` rows when an asset deletion fails so the next scheduled run can retry.
 
 ### Investigating Cleanup Failures
 
@@ -117,7 +116,7 @@ git push origin main
    curl -X GET "https://<app-domain>/api/cron/cleanup" \
      -H "Authorization: Bearer <CRON_SECRET>"
    ```
-   Expected response: `200 OK` with JSON containing `deletedShares`, `deletedFiles`, `failedShares`, `deletedRateLimitBuckets`, `batchCandidates`, and `durationMs`.
+   Expected response: `200 OK` with JSON containing `deletedShares`, `deletedFiles`, `failedShares`, `batchCandidates`, and `durationMs`.
 
 ---
 
