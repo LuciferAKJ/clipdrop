@@ -3,8 +3,9 @@ import { NextRequest } from "next/server";
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
-    share: {
-      count: vi.fn(),
+    $queryRaw: vi.fn(),
+    rateLimitBucket: {
+      deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
     },
   },
 }));
@@ -60,22 +61,15 @@ describe("lib/ipHash & rate limiting spoofing protections", () => {
 
   it("enforces rate limits on unknown IPs instead of bypassing", async () => {
     const unknownHash = hashIp("unknown");
-    (prisma.share.count as any).mockResolvedValue(10); // at limit
+    (prisma.$queryRaw as any).mockResolvedValueOnce([]); // bucket is at limit
 
     await expect(checkRateLimit(unknownHash)).rejects.toThrow(RateLimitError);
-    expect(prisma.share.count).toHaveBeenCalledWith({
-      where: {
-        ipHash: unknownHash,
-        createdAt: {
-          gte: expect.any(Date),
-        },
-      },
-    });
+    expect(prisma.$queryRaw).toHaveBeenCalled();
   });
 
   it("allows uploads below the rate limit threshold", async () => {
     const ipHash = hashIp("203.0.113.10");
-    (prisma.share.count as any).mockResolvedValue(5); // below 10
+    (prisma.$queryRaw as any).mockResolvedValueOnce([{ count: 6 }]); // below 10
 
     await expect(checkRateLimit(ipHash)).resolves.not.toThrow();
   });
