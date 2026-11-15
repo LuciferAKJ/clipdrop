@@ -68,6 +68,23 @@ describe("lib/ipHash & rate limiting spoofing protections", () => {
     }
   });
 
+  it("rejects a short production IP hash pepper", () => {
+    const previousPepper = process.env.IP_HASH_PEPPER;
+    const previousMode = process.env.NODE_ENV;
+    try {
+      process.env.IP_HASH_PEPPER = "too-short";
+      process.env.NODE_ENV = "production";
+      expect(() => hashIp("203.0.113.10")).toThrow(
+        "IP_HASH_PEPPER must be configured in production with at least 32 characters",
+      );
+    } finally {
+      if (previousPepper === undefined) delete (process.env as any).IP_HASH_PEPPER;
+      else (process.env as any).IP_HASH_PEPPER = previousPepper;
+      if (previousMode === undefined) delete (process.env as any).NODE_ENV;
+      else (process.env as any).NODE_ENV = previousMode;
+    }
+  });
+
   it("fails closed in production when IP_HASH_PEPPER is missing", () => {
     const previousPepper = process.env.IP_HASH_PEPPER;
     const previousMode = process.env.NODE_ENV;
@@ -75,7 +92,7 @@ describe("lib/ipHash & rate limiting spoofing protections", () => {
       delete (process.env as any).IP_HASH_PEPPER;
       (process.env as any).NODE_ENV = "production";
       expect(() => hashIp("203.0.113.10")).toThrow(
-        "IP_HASH_PEPPER must be configured in production",
+        "IP_HASH_PEPPER must be configured in production with at least 32 characters",
       );
     } finally {
       if (previousPepper === undefined) delete (process.env as any).IP_HASH_PEPPER;
