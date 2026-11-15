@@ -190,21 +190,74 @@ export async function POST(req: NextRequest) {
           asset.fileRecordPersisted = true;
         }
       } catch (uploadError) {
-        // Rollback on failure: delete uploaded assets from Cloudinary
-        await Promise.allSettled(
+        // Remove every external asset created by this failed upload. Keep a
+        // database reference for anything Cloudinary did not confirm deleting.
+        const cleanupResults = await Promise.allSettled(
           uploadedCloudinaryAssets.map((asset) =>
             deleteFromCloudinary(asset.publicId, asset.mimeType),
           ),
         );
+        const failedAssets = cleanupResults.flatMap((result, index) =>
+          result.status === "rejected" ? [uploadedCloudinaryAssets[index]] : [],
+        );
 
-        // Delete the created share (cascading to any created File rows in DB)
-        await prisma.share
-          .delete({
+        if (failedAssets.length > 0) {
+          for (const asset of failedAssets) {
+            if (asset.fileRecordPersisted) continue;
+            try {
+              await prisma.file.create({
+                data: {
+                  shareId: share.id,
+                  url: asset.url,
+                  publicId: asset.publicId,
+                  mimeType: asset.mimeType,
+                  sizeBytes: asset.sizeBytes,
+                  originalName: asset.originalName,
+                },
+              });
+            } catch (recordError) {
+              logger.error(
+                "Failed to persist a Cloudinary cleanup reference",
+                recordError,
+              );
+            }
+          }
+
+          // Immediately disable the failed share and let the daily cron
+          // retry any Cloudinary assets that could not be removed.
+          await prisma.share.updateMany({
             where: { id: share.id },
-          })
-          .catch((delErr) => {
-            logger.error("Failed to delete share during rollback", delErr);
+            data: { consumedAt: new Date(), expiresAt: new Date() },
+          }).catch((updateError) => {
+            logger.error(
+              "Failed to mark upload for scheduled cleanup",
+              updateError,
+            );
           });
+
+          logger.error("Upload rollback left assets for scheduled cleanup", {
+            failedAssetCount: failedAssets.length,
+          });
+        } else {
+          // All external assets were removed. Delete the database share.
+          try {
+            await prisma.share.delete({ where: { id: share.id } });
+          } catch (deleteError) {
+            logger.error(
+              "Failed to remove rolled-back share from the database",
+              deleteError,
+            );
+            await prisma.share.updateMany({
+              where: { id: share.id },
+              data: { consumedAt: new Date(), expiresAt: new Date() },
+            }).catch((updateError) => {
+              logger.error(
+                "Failed to mark rolled-back share for scheduled cleanup",
+                updateError,
+              );
+            });
+          }
+        }
 
         throw uploadError;
       }
