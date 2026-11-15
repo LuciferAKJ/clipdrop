@@ -24,10 +24,15 @@ function hashBucketKey(key: string): string {
 }
 
 /**
- * Atomically consume one request from a fixed-window bucket in PostgreSQL.
- * The INSERT .. ON CONFLICT statement makes initialization, window reset,
- * and increments safe across concurrent requests and independent Vercel
- * function instances. A full active bucket returns no row.
+ * Atomically consume one request from a fixed-window bucket.
+ *
+ * The three Prisma operations are safe across concurrent serverless instances:
+ * - createMany + skipDuplicates initializes a missing bucket once;
+ * - updateMany resets an expired bucket using a conditional write;
+ * - updateMany increments only while count < max, so at most max requests
+ *   can be admitted in the active window.
+ *
+ * No raw SQL is needed, and the counter is stored centrally in PostgreSQL.
  */
 export async function consumeRateLimit(
   key: string,
@@ -35,7 +40,13 @@ export async function consumeRateLimit(
   windowMs: number,
   errorMessage = "Too many requests — please wait a moment and try again.",
 ): Promise<void> {
-  if (!key || !Number.isInteger(max) || max < 1 || !Number.isFinite(windowMs) || windowMs < 1) {
+  if (
+    !key ||
+    !Number.isInteger(max) ||
+    max < 1 ||
+    !Number.isFinite(windowMs) ||
+    windowMs < 1
+  ) {
     throw new Error("Invalid rate limit configuration");
   }
 
@@ -43,34 +54,44 @@ export async function consumeRateLimit(
   const resetAt = new Date(now.getTime() + windowMs);
   const bucketKey = hashBucketKey(key);
 
-  const rows = await prisma.$queryRaw<Array<{ count: number }>>`
-    INSERT INTO "RateLimitBucket"
-      ("key", "count", "resetAt", "createdAt", "updatedAt")
-    VALUES
-      (${bucketKey}, 1, ${resetAt}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-    ON CONFLICT ("key") DO UPDATE
-    SET
-      "count" = CASE
-        WHEN "RateLimitBucket"."resetAt" <= ${now} THEN 1
-        ELSE "RateLimitBucket"."count" + 1
-      END,
-      "resetAt" = CASE
-        WHEN "RateLimitBucket"."resetAt" <= ${now} THEN ${resetAt}
-        ELSE "RateLimitBucket"."resetAt"
-      END,
-      "updatedAt" = CURRENT_TIMESTAMP
-    WHERE
-      "RateLimitBucket"."resetAt" <= ${now}
-      OR "RateLimitBucket"."count" < ${max}
-    RETURNING "count"
-  `;
+  await prisma.rateLimitBucket.createMany({
+    data: [{ key: bucketKey, count: 0, resetAt }],
+    skipDuplicates: true,
+  });
 
-  if (rows.length === 0) {
+  // Only one concurrent request can move an expired row into the new window.
+  // Requests that arrive after this update see resetAt > now and do not reset
+  // the same bucket again.
+  await prisma.rateLimitBucket.updateMany({
+    where: {
+      key: bucketKey,
+      resetAt: { lte: now },
+    },
+    data: {
+      count: 0,
+      resetAt,
+    },
+  });
+
+  // This conditional increment is the admission decision. PostgreSQL applies
+  // the filter and increment atomically for each matching row.
+  const consumed = await prisma.rateLimitBucket.updateMany({
+    where: {
+      key: bucketKey,
+      resetAt: { gt: now },
+      count: { lt: max },
+    },
+    data: {
+      count: { increment: 1 },
+    },
+  });
+
+  if (consumed.count !== 1) {
     throw new RateLimitError(errorMessage);
   }
 }
 
-/** Retain the existing upload limiter API, now backed by shared DB state. */
+/** Shared upload limiter; retained as a stable API for the upload route. */
 export async function checkRateLimit(ipHash: string): Promise<void> {
   await consumeRateLimit(
     `upload:${ipHash}`,
