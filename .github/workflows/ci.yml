@@ -58,7 +58,7 @@ jobs:
           CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
           CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
           CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
-          IP_HASH_PEPPER: ${{ secrets.CI_IP_HASH_PEPPER || secrets.IP_HASH_PEPPER }}
+          IP_HASH_PEPPER: ${{ secrets.IP_HASH_PEPPER }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
 
       - name: Install Playwright Browsers
@@ -69,7 +69,6 @@ jobs:
         shell: bash
         env:
           CI_DATABASE_URL: ${{ secrets.CI_DATABASE_URL }}
-          CI_IP_HASH_PEPPER: ${{ secrets.CI_IP_HASH_PEPPER || secrets.IP_HASH_PEPPER }}
         run: |
           if [[ -z "$CI_DATABASE_URL" ]]; then
             echo "::error::Add CI_DATABASE_URL in Settings > Secrets and variables > Actions. Use a dedicated Neon test branch, not production."
@@ -79,10 +78,6 @@ jobs:
             postgres://*|postgresql://*) ;;
             *) echo "::error::CI_DATABASE_URL must use the postgres:// or postgresql:// scheme."; exit 1 ;;
           esac
-          if [[ ${#CI_IP_HASH_PEPPER} -lt 32 ]]; then
-            echo "::error::Set CI_IP_HASH_PEPPER (or IP_HASH_PEPPER) to a random secret with at least 32 characters."
-            exit 1
-          fi
 
       - name: Apply migrations to the dedicated E2E database
         if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.actor != 'dependabot[bot]' && github.event.pull_request.head.repo.full_name == github.repository)
@@ -100,5 +95,5 @@ jobs:
           CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
           CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
           CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
-          IP_HASH_PEPPER: ${{ secrets.CI_IP_HASH_PEPPER || secrets.IP_HASH_PEPPER }}
+          IP_HASH_PEPPER: ${{ secrets.IP_HASH_PEPPER }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
