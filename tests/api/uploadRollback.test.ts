@@ -61,8 +61,10 @@ describe("Upload Pre-validation & Rollback (app/api/upload)", () => {
     (prisma.share.count as any).mockResolvedValue(0); // rate limiting passes
   });
 
-  it("returns 429 when the shared upload rate limit is exhausted", async () => {
-    (prisma.$queryRaw as any).mockResolvedValueOnce([]);
+  it("returns 429 when the upload rate limit is exhausted", async () => {
+    // PR #33 still uses the existing share-count upload limiter. PR #34
+    // replaces this with the persistent PostgreSQL bucket implementation.
+    (prisma.share.count as any).mockResolvedValueOnce(10);
 
     const res = await POST(makeUploadReq(new FormData(), "198.51.100.19"));
 
