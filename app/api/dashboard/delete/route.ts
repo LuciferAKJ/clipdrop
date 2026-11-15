@@ -43,10 +43,34 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  for (const file of share.files) {
-    await deleteFromCloudinary(file.publicId, file.mimeType).catch(() => {});
+  const deletionResults = await Promise.allSettled(
+    share.files.map((file) =>
+      deleteFromCloudinary(file.publicId, file.mimeType),
+    ),
+  );
+  const hasDeletionFailure = deletionResults.some(
+    (result) => result.status === "rejected",
+  );
+
+  if (hasDeletionFailure) {
+    // Hide the share immediately, but keep its File rows so the scheduled
+    // cleanup job can retry any assets Cloudinary did not delete.
+    await prisma.share.updateMany({
+      where: { id: share.id, userId },
+      data: { consumedAt: new Date(), expiresAt: new Date() },
+    });
+
+    return NextResponse.json(
+      {
+        success: true,
+        pendingCleanup: true,
+        message: "Share disabled. File cleanup will be retried automatically.",
+      },
+      { status: 202 },
+    );
   }
+
   await prisma.share.delete({ where: { id: share.id } });
 
-  return NextResponse.json({ success: true });
+  return NextResponse.json({ success: true, pendingCleanup: false });
 }
