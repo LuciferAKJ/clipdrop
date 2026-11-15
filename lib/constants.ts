@@ -35,3 +35,4 @@ export const RATE_LIMIT_WINDOW_MS = 60_000;
 export const RATE_LIMIT_UPLOAD_MAX = 10;
 export const RATE_LIMIT_CLIPBOARD_MAX = 30; // clipboard pushes are more frequent by design
 export const RATE_LIMIT_DEVICE_MAX = 20;
+export const RATE_LIMIT_CLEANUP_BATCH_SIZE = 1000;
