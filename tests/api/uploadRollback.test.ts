@@ -115,9 +115,9 @@ describe("Upload Pre-validation & Rollback (app/api/upload)", () => {
     const req = makeUploadReq(formData, "198.51.100.12");
 
     const res = await POST(req);
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(500);
     const json = await res.json();
-    expect(json.error).toBe("Cloudinary connection reset");
+    expect(json.error).toBe("Upload failed. Please try again.");
 
     // Rollback verification:
     // 1. File 1 was cleaned up from Cloudinary
