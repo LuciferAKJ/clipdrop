@@ -12,6 +12,7 @@ import { auth } from "@clerk/nextjs/server";
 import { getClientIp, hashIp } from "@/lib/ipHash";
 import { checkRateLimit, RateLimitError } from "@/lib/rateLimit";
 import { logger } from "@/lib/logger";
+import { isSameOriginRequest } from "@/lib/csrf";
 
 const EXPIRY_OPTIONS: Record<string, number> = {
   "1h": 60 * 60 * 1000,
@@ -27,21 +28,11 @@ const ALLOWED_DOWNLOAD_LIMITS = [1, 5, 10, 25, 50, 100];
 
 export async function POST(req: NextRequest) {
   try {
-    const origin = req.headers.get("origin");
-    const host = req.headers.get("host");
-
-    if (origin && host) {
-      try {
-        const originHost = new URL(origin).host;
-        if (originHost !== host) {
-          return NextResponse.json(
-            { error: "Cross-origin request rejected" },
-            { status: 403 },
-          );
-        }
-      } catch {
-        return NextResponse.json({ error: "Invalid origin" }, { status: 403 });
-      }
+    if (!isSameOriginRequest(req)) {
+      return NextResponse.json(
+        { error: "Cross-origin request rejected" },
+        { status: 403 },
+      );
     }
 
     const { userId } = await auth();
