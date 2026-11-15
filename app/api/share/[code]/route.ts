@@ -3,9 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { verifyPassword } from "@/lib/password";
 import { getClientIp, hashIp } from "@/lib/ipHash";
 import {
-  checkMemoryRateLimit,
+  consumeRateLimit,
   checkPasswordRateLimit,
-  recordFailedPasswordAttempt,
   clearPasswordAttempts,
   RateLimitError,
 } from "@/lib/rateLimit";
@@ -18,7 +17,7 @@ export async function GET(
   const ipHash = hashIp(getClientIp(req));
 
   try {
-    checkMemoryRateLimit(
+    await consumeRateLimit(
       `share-get:${ipHash}`,
       60,
       60_000,
@@ -74,7 +73,7 @@ export async function POST(
   const ipHash = hashIp(getClientIp(req));
 
   try {
-    checkMemoryRateLimit(
+    await consumeRateLimit(
       `share-post:${ipHash}`,
       60,
       60_000,
@@ -127,7 +126,7 @@ export async function POST(
   const passwordRateKey = `pwd-fail:${ipHash}:${share.id}`;
   if (share.passwordHash) {
     try {
-      checkPasswordRateLimit(passwordRateKey, 5);
+      await checkPasswordRateLimit(passwordRateKey, 5);
     } catch (error) {
       if (error instanceof RateLimitError) {
         return NextResponse.json({ error: error.message }, { status: 429 });
@@ -139,12 +138,11 @@ export async function POST(
       password && (await verifyPassword(password, share.passwordHash));
 
     if (!valid) {
-      recordFailedPasswordAttempt(passwordRateKey, 5 * 60 * 1000);
       return NextResponse.json({ error: "Invalid password" }, { status: 401 });
     }
 
     // Clear failed attempts on successful password entry
-    clearPasswordAttempts(passwordRateKey);
+    await clearPasswordAttempts(passwordRateKey);
   }
 
   // Atomic download-limit and consumption enforcement
