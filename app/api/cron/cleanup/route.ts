@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { createHash, timingSafeEqual } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { deleteFromCloudinary } from "@/lib/cloudinary";
-import { CLEANUP_BATCH_SIZE } from "@/lib/constants";
+import {
+  CLEANUP_BATCH_SIZE,
+  RATE_LIMIT_CLEANUP_BATCH_SIZE,
+} from "@/lib/constants";
 import { logger } from "@/lib/logger";
 
 /**
@@ -143,7 +146,7 @@ export async function GET(req: NextRequest) {
       where: { resetAt: { lt: now } },
       select: { key: true },
       orderBy: { resetAt: "asc" },
-      take: CLEANUP_BATCH_SIZE,
+      take: RATE_LIMIT_CLEANUP_BATCH_SIZE,
     });
 
     if (expiredBuckets.length > 0) {
