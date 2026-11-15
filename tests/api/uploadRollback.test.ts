@@ -132,21 +132,27 @@ describe("Upload Pre-validation & Rollback (app/api/upload)", () => {
   });
 
   it("H. preserves the share and file reference when Cloudinary rollback fails", async () => {
-    const file = new File([new Uint8Array(VALID_PDF_BYTES)], "doc.pdf", {
+    const file1 = new File([new Uint8Array(VALID_PDF_BYTES)], "doc1.pdf", {
+      type: "application/pdf",
+    });
+    const file2 = new File([new Uint8Array(VALID_PDF_BYTES)], "doc2.pdf", {
       type: "application/pdf",
     });
     const formData = new FormData();
-    formData.append("files", file);
+    formData.append("files", file1);
+    formData.append("files", file2);
 
     (prisma.share.create as any).mockResolvedValue({
       id: "share-cleanup-pending",
       code: "TEST99",
     });
     (prisma.file.create as any).mockResolvedValue({});
-    (uploadToCloudinary as any).mockResolvedValue({
-      url: "https://res.cloudinary.com/demo/raw/upload/clipdrop/asset.pdf",
-      publicId: "clipdrop/asset.pdf",
-    });
+    (uploadToCloudinary as any)
+      .mockResolvedValueOnce({
+        url: "https://res.cloudinary.com/demo/raw/upload/clipdrop/asset.pdf",
+        publicId: "clipdrop/asset.pdf",
+      })
+      .mockRejectedValueOnce(new Error("Cloudinary upload failed midway"));
     (deleteFromCloudinary as any).mockRejectedValue(
       new Error("Cloudinary temporarily unavailable"),
     );
@@ -155,6 +161,7 @@ describe("Upload Pre-validation & Rollback (app/api/upload)", () => {
     const res = await POST(makeUploadReq(formData, "198.51.100.14"));
 
     expect(res.status).toBe(400);
+    expect(prisma.file.create).toHaveBeenCalledTimes(2);
     expect(prisma.share.delete).not.toHaveBeenCalled();
     expect(prisma.share.updateMany).toHaveBeenCalledWith({
       where: { id: "share-cleanup-pending" },
