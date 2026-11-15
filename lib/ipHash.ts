@@ -40,8 +40,13 @@ export function getClientIp(req: NextRequest): string {
 export function hashIp(ip: string): string {
   const pepper = process.env.IP_HASH_PEPPER?.trim();
 
-  if (!pepper && process.env.NODE_ENV === "production") {
-    throw new Error("IP_HASH_PEPPER must be configured in production");
+  if (
+    process.env.NODE_ENV === "production" &&
+    (!pepper || pepper.length < 32)
+  ) {
+    throw new Error(
+      "IP_HASH_PEPPER must be configured in production with at least 32 characters",
+    );
   }
 
   // A fixed development-only key keeps local tests deterministic. Production
