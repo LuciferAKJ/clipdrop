@@ -148,13 +148,20 @@ export { MAX_TEXT_LENGTH };
 
 const VALID_CONTENT_TYPES: ClipboardContentType[] = ["TEXT", "SHARE"];
 
+export class UploadValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "UploadValidationError";
+  }
+}
+
 export function validateTextShare(text: string) {
-  if (!text || text.trim().length === 0) {
-    throw new Error("Text cannot be empty");
+  if (typeof text !== "string" || text.trim().length === 0) {
+    throw new UploadValidationError("Text cannot be empty");
   }
 
   if (text.length > MAX_TEXT_LENGTH) {
-    throw new Error("Text too long");
+    throw new UploadValidationError("Text too long");
   }
 }
 
@@ -530,6 +537,7 @@ function validateFileContent(
 }
 
 export function validateFile(file: File, buffer?: Buffer | Uint8Array) {
+  try {
   if (file.size > MAX_FILE_SIZE) {
     throw new Error("File exceeds 10MB limit");
   }
@@ -571,6 +579,11 @@ export function validateFile(file: File, buffer?: Buffer | Uint8Array) {
   // 5. If buffer content is provided, perform deep content-signature and magic-byte checks
   if (buffer) {
     validateFileContent(ext, file.type, buffer);
+  }
+  } catch (error) {
+    throw new UploadValidationError(
+      error instanceof Error ? error.message : "Invalid file",
+    );
   }
 }
 
