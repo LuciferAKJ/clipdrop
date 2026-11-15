@@ -3,8 +3,9 @@ import { NextRequest } from "next/server";
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
-    $queryRaw: vi.fn(),
     rateLimitBucket: {
+      createMany: vi.fn().mockResolvedValue({ count: 1 }),
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
       deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
     },
   },
@@ -17,6 +18,8 @@ import { prisma } from "@/lib/prisma";
 describe("lib/ipHash & rate limiting spoofing protections", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    (prisma.rateLimitBucket.createMany as any).mockResolvedValue({ count: 1 });
+    (prisma.rateLimitBucket.updateMany as any).mockResolvedValue({ count: 1 });
   });
 
   it("prioritizes x-real-ip from Vercel edge and ignores spoofed x-forwarded-for headers", () => {
@@ -110,15 +113,19 @@ describe("lib/ipHash & rate limiting spoofing protections", () => {
 
   it("enforces rate limits on unknown IPs instead of bypassing", async () => {
     const unknownHash = hashIp("unknown");
-    (prisma.$queryRaw as any).mockResolvedValueOnce([]); // bucket is at limit
+    (prisma.rateLimitBucket.updateMany as any)
+      .mockResolvedValueOnce({ count: 0 }) // no expired bucket to reset
+      .mockResolvedValueOnce({ count: 0 }); // full bucket cannot increment
 
     await expect(checkRateLimit(unknownHash)).rejects.toThrow(RateLimitError);
-    expect(prisma.$queryRaw).toHaveBeenCalled();
+    expect(prisma.rateLimitBucket.updateMany).toHaveBeenCalledTimes(2);
   });
 
   it("allows uploads below the rate limit threshold", async () => {
     const ipHash = hashIp("203.0.113.10");
-    (prisma.$queryRaw as any).mockResolvedValueOnce([{ count: 6 }]); // below 10
+    (prisma.rateLimitBucket.updateMany as any)
+      .mockResolvedValueOnce({ count: 0 }) // no expired bucket to reset
+      .mockResolvedValueOnce({ count: 1 }); // request admitted
 
     await expect(checkRateLimit(ipHash)).resolves.not.toThrow();
   });
